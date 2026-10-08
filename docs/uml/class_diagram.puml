@@ -1,0 +1,220 @@
+
+@startuml AlbumSnapClassDiagram
+
+title AlbumSnap - Detailed Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle folder
+skinparam defaultFontSize 12
+
+' =========================
+' VIEWS
+' =========================
+package "views" {
+
+    class CameraView {
+        + displayCamera(): void
+        + captureImage(): void
+        + showCaptureError(message: String): void
+        + showRecognitionProgress(): void
+    }
+
+    class AlbumView {
+        + displayCandidates(albums: List<Album>): void
+        + displayAlbum(album: Album): void
+        + showRecognitionError(message: String): void
+        + selectAlbum(spotifyId: String): void
+    }
+
+    class PlaylistView {
+        + displayPlaylists(playlists: List<Playlist>): void
+        + selectPlaylist(spotifyId: String): void
+        + showSaveProgress(): void
+        + showSaveResult(operation: PlaylistSaveOperation): void
+    }
+
+    class LoginView {
+        + displayLogin(): void
+        + connectSpotify(): void
+        + showConnectionStatus(connected: boolean): void
+    }
+}
+
+' =========================
+' CONTROLLERS
+' =========================
+package "controllers" {
+
+    class CameraController {
+        - recognitionService: ImageRecognitionService
+        - albumSearchService: AlbumSearchService
+        + captureAndRecognize(image: AlbumCoverImage): void
+        + recognizeAlbum(image: AlbumCoverImage): RecognitionResult
+        + searchCandidates(result: RecognitionResult): List<Album>
+    }
+
+    class AlbumController {
+        - albumRepository: AlbumRepository
+        + getAlbum(spotifyId: String): Album
+        + getAlbumTracks(spotifyId: String): List<Track>
+        + selectAlbum(spotifyId: String): void
+    }
+
+    class PlaylistController {
+        - authService: SpotifyAuthService
+        - playlistService: PlaylistService
+        - playlistRepository: PlaylistRepository
+        + connectSpotify(): void
+        + getPlaylists(): List<Playlist>
+        + saveAlbumToPlaylist(album: Album, playlist: Playlist): PlaylistSaveOperation
+        + getSaveStatus(operationId: String): SaveStatus
+    }
+}
+
+' =========================
+' SERVICES
+' =========================
+package "services" {
+
+    interface ImageRecognitionService {
+        + recognizeImage(image: AlbumCoverImage): RecognitionResult
+    }
+
+    interface AlbumSearchService {
+        + searchAlbums(result: RecognitionResult): List<Album>
+        + getAlbumDetails(spotifyId: String): Album
+    }
+
+    interface SpotifyAuthService {
+        + authorize(): void
+        + getAccessToken(): String
+        + isAuthenticated(): boolean
+        + disconnect(): void
+    }
+
+    interface PlaylistService {
+        + getUserPlaylists(): List<Playlist>
+        + addTracks(playlist: Playlist, tracks: List<Track>): PlaylistSaveOperation
+        + getOperationStatus(operationId: String): SaveStatus
+    }
+}
+
+' =========================
+' REPOSITORIES
+' =========================
+package "repository" {
+
+    interface AlbumRepository {
+        + findBySpotifyId(spotifyId: String): Album
+        + save(album: Album): void
+    }
+
+    interface PlaylistRepository {
+        + findBySpotifyId(spotifyId: String): Playlist
+        + findAllByAccount(account: SpotifyAccount): List<Playlist>
+        + save(playlist: Playlist): void
+    }
+}
+
+' =========================
+' EXTERNAL IMPLEMENTATIONS
+' =========================
+package "external" {
+
+    class GoogleCloudVisionService {
+        + recognizeImage(image: AlbumCoverImage): RecognitionResult
+    }
+
+    class SpotifyAlbumSearchService {
+        - albumRepository: AlbumRepository
+        + searchAlbums(result: RecognitionResult): List<Album>
+        + getAlbumDetails(spotifyId: String): Album
+    }
+
+    class SpotifyAuthManager {
+        + authorize(): void
+        + getAccessToken(): String
+        + isAuthenticated(): boolean
+        + disconnect(): void
+        + refreshAccessToken(): String
+    }
+
+    class SpotifyPlaylistService {
+        - playlistRepository: PlaylistRepository
+        - authService: SpotifyAuthService
+        + getUserPlaylists(): List<Playlist>
+        + addTracks(playlist: Playlist, tracks: List<Track>): PlaylistSaveOperation
+        + getOperationStatus(operationId: String): SaveStatus
+    }
+
+    class SpotifyAlbumRepository {
+        + findBySpotifyId(spotifyId: String): Album
+        + save(album: Album): void
+    }
+
+    class SpotifyPlaylistRepository {
+        + findBySpotifyId(spotifyId: String): Playlist
+        + findAllByAccount(account: SpotifyAccount): List<Playlist>
+        + save(playlist: Playlist): void
+    }
+}
+
+' =========================
+' INTERFACE IMPLEMENTATIONS
+' =========================
+GoogleCloudVisionService ..|> ImageRecognitionService
+SpotifyAlbumSearchService ..|> AlbumSearchService
+SpotifyAuthManager ..|> SpotifyAuthService
+SpotifyPlaylistService ..|> PlaylistService
+SpotifyAlbumRepository ..|> AlbumRepository
+SpotifyPlaylistRepository ..|> PlaylistRepository
+
+' =========================
+' SERVICE DEPENDENCIES
+' =========================
+SpotifyAlbumSearchService ..> AlbumRepository
+SpotifyPlaylistService ..> PlaylistRepository
+SpotifyPlaylistService ..> SpotifyAuthService
+
+' =========================
+' CONTROLLER DEPENDENCIES
+' =========================
+CameraController ..> ImageRecognitionService
+CameraController ..> AlbumSearchService
+AlbumController ..> AlbumRepository
+AlbumController ..> AlbumSearchService
+PlaylistController ..> SpotifyAuthService
+PlaylistController ..> PlaylistService
+PlaylistController ..> PlaylistRepository
+
+' =========================
+' VIEW-CONTROLLER RELATIONSHIPS
+' =========================
+CameraView ..> CameraController
+AlbumView ..> AlbumController
+AlbumView ..> CameraController
+PlaylistView ..> PlaylistController
+LoginView ..> PlaylistController
+
+' =========================
+' EXTERNAL SYSTEM NOTES
+' =========================
+note bottom of GoogleCloudVisionService
+  Google Cloud Vision API
+end note
+
+note bottom of SpotifyAlbumSearchService
+  Spotify Web API:
+  album search and metadata
+  retrieve playlists and add tracks
+end note
+
+note top of SpotifyAuthManager
+  Spotify OAuth:
+  authorization and tokens
+end note
+
+
+@enduml

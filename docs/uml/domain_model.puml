@@ -1,0 +1,113 @@
+
+@startuml AlbumSnapDomainModel
+
+title AlbumSnap - Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle folder
+
+class User {
+  - id: String
+  - name: String
+}
+
+class AlbumRecognition {
+  - id: String
+  - recognizedAt: LocalDateTime
+  - status: RecognitionStatus
+}
+
+enum RecognitionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+class AlbumCoverImage {
+  - id: String
+  - imageUri: String
+  - capturedAt: LocalDateTime
+  - width: int
+  - height: int
+}
+
+class RecognitionResult {
+  - confidence: float
+  - matchedAt: LocalDateTime
+}
+
+class Album {
+  - spotifyId: String
+  - title: String
+  - releaseDate: String
+  - totalTracks: int
+  - albumType: String
+}
+
+class Artist {
+  - spotifyId: String
+  - name: String
+}
+
+class Track {
+  - spotifyId: String
+  - title: String
+  - durationMs: long
+  - trackNumber: int
+}
+
+class SpotifyAccount {
+  - spotifyUserId: String
+  - displayName: String
+  - connectedAt: LocalDateTime
+}
+
+class Playlist {
+  - spotifyId: String
+  - name: String
+  - description: String
+  - trackCount: int
+  - isCollaborative: boolean
+}
+
+class PlaylistSaveOperation {
+  - id: String
+  - requestedAt: LocalDateTime
+  - status: SaveStatus
+  - tracksRequested: int
+  - tracksSaved: int
+}
+
+enum SaveStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+}
+
+User "1" -- "0..*" AlbumRecognition : performs
+AlbumRecognition "1" *-- "1" AlbumCoverImage : uses
+AlbumRecognition "1" *-- "0..1" RecognitionResult : produces
+AlbumRecognition --> RecognitionStatus : status
+
+RecognitionResult "0..*" --> "0..*" Album : identifies candidates
+
+Album "0..*" -- "1..*" Artist : credited artists
+Album "1" *-- "0..*" Track : contains
+
+User "1" -- "0..1" SpotifyAccount : connects
+SpotifyAccount "1" -- "0..*" Playlist : owns or can access
+
+Playlist "0..*" -- "0..*" Track : contains
+
+User "1" -- "0..*" PlaylistSaveOperation : requests
+PlaylistSaveOperation "0..*" --> "1" SpotifyAccount : uses account
+PlaylistSaveOperation "0..*" --> "1" Playlist : target playlist
+PlaylistSaveOperation "0..*" --> "1" Album : source album
+PlaylistSaveOperation --> SaveStatus : status
+
+@enduml

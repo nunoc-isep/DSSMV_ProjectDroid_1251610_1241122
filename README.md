@@ -1,1 +1,3 @@
-# DSSMV_ProjectDroid_1251610_1241122
+# Album Snap
+
+This repository is dedicated to the ***Album Snap*** project, part of the **DSSMV** course.
