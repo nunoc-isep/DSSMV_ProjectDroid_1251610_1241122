@@ -41,8 +41,7 @@ import java.util.concurrent.Executors;
  */
 public class SpotifyAuthManager implements SpotifyAuthService {
 
-    // TODO: colar o Client ID do Spotify Developer Dashboard (nao e segredo; em PKCE nao ha client secret)
-    public static final String CLIENT_ID = "COLOCA_AQUI_O_CLIENT_ID";
+    public static final String CLIENT_ID = "9521c2b3b6d740fb900a04e9499089a9";
 
     // Tem de ser IGUAL (maiusculas, barras no fim, etc.) ao Redirect URI registado no Dashboard
     public static final String REDIRECT_URI = "albumsnap://callback";
