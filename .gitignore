@@ -1,0 +1,14 @@
+@"
+# Gradle / build
+.gradle/
+build/
+*.iml
+
+# IDE (cada um tem a sua config)
+.idea/
+
+# Especifico da maquina (caminho do SDK) e segredos
+local.properties
+secrets.properties
+*.keystore
+"@ | Set-Content -Encoding utf8 .gitignore
