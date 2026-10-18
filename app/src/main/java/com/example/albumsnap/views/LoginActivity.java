@@ -7,7 +7,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.albumsnap.MainActivity;
 import com.example.albumsnap.R;
 import com.example.albumsnap.external.SpotifyAuthManager;
 
@@ -49,7 +48,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private void showConnectionStatus(boolean connected) {
         if (connected) {
-            startActivity(new Intent(this, MainActivity.class));
+            startActivity(new Intent(this, MainMenuActivity.class));
             finish();
         } else {
             Toast.makeText(this, "Nao ligado ao Spotify", Toast.LENGTH_LONG).show();

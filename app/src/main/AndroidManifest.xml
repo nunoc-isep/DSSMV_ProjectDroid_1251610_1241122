@@ -37,9 +37,12 @@
             </intent-filter>
         </activity>
 
-        <activity
-                android:name=".MainActivity"
-                android:exported="false"/>
+        <activity android:name=".views.CameraActivity" android:exported="false"/>
+        <activity android:name=".views.AlbumActivity" android:exported="false"/>
+        <activity android:name=".views.LibraryActivity" android:exported="false"/>
+        <activity android:name=".views.SettingsActivity" android:exported="false"/>
+
+        <activity android:name=".views.MainMenuActivity" android:exported="false"/>
     </application>
 
 </manifest>
