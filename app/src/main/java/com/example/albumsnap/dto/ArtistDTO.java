@@ -1,9 +1,10 @@
 package com.example.albumsnap.dto;
 
 import org.json.JSONObject;
+import java.io.Serializable;
 
 /** Artista tal como vem no JSON do Spotify. */
-public class ArtistDTO {
+public class ArtistDTO implements Serializable{
 
     private String id;
     private String name;

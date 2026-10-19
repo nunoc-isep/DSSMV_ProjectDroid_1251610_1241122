@@ -2,12 +2,12 @@ package com.example.albumsnap.dto;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Album tal como vem no JSON do Spotify (pesquisa ou GET /albums/{id}). */
-public class AlbumDTO {
+public class AlbumDTO implements Serializable{
 
     private String id;
     private String name;

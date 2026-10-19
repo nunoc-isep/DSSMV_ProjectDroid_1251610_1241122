@@ -12,7 +12,7 @@ import com.example.albumsnap.repository.LocalAlbumRepository;
 import java.util.ArrayList;
 import java.util.List;
 
-/** LocalAlbumRepository sobre SQLite. Chamar fora da UI thread (ver controllers). */
+/** LocalAlbumRepository sobre SQLite. Chamar fora da UI thread. */
 public class SqliteAlbumRepository implements LocalAlbumRepository {
 
     private static final int MAX_RECENT = 10;
@@ -38,6 +38,7 @@ public class SqliteAlbumRepository implements LocalAlbumRepository {
         values.put(AlbumDbHelper.COL_IN_LIBRARY, 0);
         values.put(AlbumDbHelper.COL_SAVED_AT, 0);
         db.update(AlbumDbHelper.TABLE, values, AlbumDbHelper.COL_ID + "=?", new String[]{spotifyId});
+
         // Apaga linhas que ja nao servem a Library nem aos scans recentes
         db.delete(AlbumDbHelper.TABLE, AlbumDbHelper.COL_IN_LIBRARY + "=0 AND "
                 + AlbumDbHelper.COL_LAST_SCANNED_AT + "=0", null);
@@ -124,7 +125,6 @@ public class SqliteAlbumRepository implements LocalAlbumRepository {
         int typeCol = c.getColumnIndexOrThrow(AlbumDbHelper.COL_ALBUM_TYPE);
 
         while (c.moveToNext()) {
-            // Os nomes ficam guardados juntos; reconstroi-se um unico "artista" com esse texto
             List<Artist> artists = new ArrayList<>();
             String names = c.getString(artistsCol);
             if (names != null && !names.isEmpty()) artists.add(new Artist("", names));

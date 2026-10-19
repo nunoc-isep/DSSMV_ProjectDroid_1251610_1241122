@@ -5,7 +5,7 @@ import com.example.albumsnap.model.Album;
 import java.util.List;
 
 /** Armazenamento local: Library da app e ultimos albuns digitalizados. */
-public interface LocalAlbumRepository {
+public interface LocalAlbumRepository{
 
     void saveToLibrary(Album album);
 

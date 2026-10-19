@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
+    <!-- Garante que o app requer câmara no dispositivo -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
+    <!-- Permissões necessárias -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
             android:name=".AlbumSnapApplication"
@@ -37,6 +42,17 @@
         <activity android:name=".views.AlbumActivity" android:exported="false"/>
         <activity android:name=".views.LibraryActivity" android:exported="false"/>
         <activity android:name=".views.SettingsActivity" android:exported="false"/>
+
+        <provider
+                android:name="androidx.core.content.FileProvider"
+                android:authorities="${applicationId}.provider"
+                android:exported="false"
+                android:grantUriPermissions="true">
+            <meta-data
+                    android:name="android.support.FILE_PROVIDER_PATHS"
+                    android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

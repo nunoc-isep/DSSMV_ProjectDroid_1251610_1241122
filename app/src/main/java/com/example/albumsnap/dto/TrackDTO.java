@@ -1,9 +1,10 @@
 package com.example.albumsnap.dto;
 
 import org.json.JSONObject;
+import java.io.Serializable;
 
 /** Faixa tal como vem no JSON do Spotify. */
-public class TrackDTO {
+public class TrackDTO implements Serializable{
 
     private String id;
     private String name;
