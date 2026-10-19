@@ -1,4 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- TODO: traducoes para portugues (mesmos nomes que em values/strings.xml) -->
+    <string name="app_name">Album Snap</string>
+
+    <!-- Login -->
+    <string name="login_title">AlbumSnap</string>
+    <string name="login_tagline">Fotografa a capa de um álbum e descobre o álbum</string>
+    <string name="login_button">Entrar com o Spotify</string>
+
+    <!-- Menu principal -->
+    <string name="menu_library_cd">Biblioteca</string>
+    <string name="menu_settings_cd">Definições</string>
+    <string name="menu_camera_cd">Digitalizar um álbum</string>
+    <string name="menu_scan_hint">Toca para digitalizar a capa de um álbum</string>
+    <string name="menu_recent_title">Digitalizações recentes</string>
+    <string name="menu_recent_empty">Ainda não há digitalizações. Toca na câmara para digitalizar a capa de um álbum.</string>
+    <string name="menu_info_cd">Detalhes do álbum</string>
+
+    <!-- Comum -->
+    <string name="back_cd">Voltar</string>
+
+    <!-- Álbum -->
+    <string name="album_cover_cd">Capa do álbum</string>
+    <string name="album_tracks">Faixas</string>
+    <string name="album_save_library">Guardar na Biblioteca</string>
+    <string name="album_remove_library">Remover da Biblioteca</string>
+    <string name="album_add_favourite">Adicionar aos favoritos do Spotify</string>
+    <string name="album_favourite_added">Adicionado aos favoritos do Spotify</string>
+    <string name="album_type_album">Álbum</string>
+    <string name="album_type_single">Single</string>
+    <string name="album_type_compilation">Compilação</string>
+    <string name="toast_saved">Guardado na tua Biblioteca</string>
+    <string name="toast_removed">Removido da tua Biblioteca</string>
+    <string name="toast_favourite_ok">Álbum adicionado aos teus favoritos do Spotify</string>
+    <string name="error_missing_album">Nenhum álbum selecionado.</string>
+    <plurals name="track_count">
+        <item quantity="one">%d faixa</item>
+        <item quantity="other">%d faixas</item>
+    </plurals>
+
+    <!-- Biblioteca -->
+    <string name="library_title">Biblioteca</string>
+    <string name="library_empty">Ainda não há álbuns guardados. Abre um álbum e toca em “Guardar na Biblioteca”.</string>
+
+    <!-- Definições -->
+    <string name="settings_title">Definições</string>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_system">Predefinição do sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Escuro</string>
+    <string name="settings_language">Idioma</string>
+    <string name="language_system">Predefinição do sistema</string>
+    <string name="language_en">English</string>
+    <string name="language_pt">Português</string>
+    <string name="settings_logout">Terminar sessão</string>
 </resources>

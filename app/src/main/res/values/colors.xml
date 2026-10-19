@@ -2,4 +2,16 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Marca AlbumSnap -->
+    <color name="brand_primary">#FF4F3BD6</color>
+    <color name="brand_primary_container">#FFE4DFFF</color>
+    <color name="brand_on_primary_container">#FF14006B</color>
+    <color name="brand_primary_dark">#FFC8BFFF</color>
+    <color name="brand_on_primary_dark">#FF20008A</color>
+    <color name="brand_primary_container_dark">#FF3A28B8</color>
+    <color name="brand_on_primary_container_dark">#FFE4DFFF</color>
+
+    <!-- Fundo do icone da app -->
+    <color name="ic_launcher_background">#FF4F3BD6</color>
 </resources>

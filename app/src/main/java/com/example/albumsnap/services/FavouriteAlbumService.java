@@ -1,7 +1,9 @@
 package com.example.albumsnap.services;
 
-/**
- * TODO: contrato para adicionar o album aos favoritos da biblioteca do Spotify.
- */
+import java.io.IOException;
+
+/** Contrato para marcar um album como favorito na biblioteca do Spotify. Bloqueante. */
 public interface FavouriteAlbumService {
+
+    void addAlbum(String spotifyId) throws IOException;
 }

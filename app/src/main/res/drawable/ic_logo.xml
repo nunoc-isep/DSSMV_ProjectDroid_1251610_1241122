@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logotipo do AlbumSnap: disco dentro de um visor de camara -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#4F3BD6"
+        android:pathData="M26,0h56a26,26 0 0 1 26,26v56a26,26 0 0 1 -26,26h-56a26,26 0 0 1 -26,-26v-56a26,26 0 0 1 26,-26z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M26,38V28a2,2 0 0 1 2,-2h10 M70,26h10a2,2 0 0 1 2,2v10 M82,70v10a2,2 0 0 1 -2,2h-10 M38,82h-10a2,2 0 0 1 -2,-2v-10"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3.5" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-17,0a17,17 0 1,0 34,0a17,17 0 1,0 -34,0" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,54m-11,0a11,11 0 1,0 22,0a11,11 0 1,0 -22,0"
+        android:strokeColor="#C8BFFF"
+        android:strokeWidth="1.4" />
+    <path
+        android:fillColor="#4F3BD6"
+        android:pathData="M54,54m-4.5,0a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0" />
+</vector>

@@ -1,3 +1,55 @@
 <resources>
     <string name="app_name">Album Snap</string>
+
+    <!-- Login -->
+    <string name="login_title">AlbumSnap</string>
+    <string name="login_tagline">Snap an album cover, discover the album</string>
+    <string name="login_button">Log in with Spotify</string>
+
+    <!-- Main menu -->
+    <string name="menu_library_cd">Library</string>
+    <string name="menu_settings_cd">Settings</string>
+    <string name="menu_camera_cd">Scan an album</string>
+    <string name="menu_scan_hint">Tap to scan an album cover</string>
+    <string name="menu_recent_title">Recent scans</string>
+    <string name="menu_recent_empty">No scans yet. Tap the camera to scan an album cover.</string>
+    <string name="menu_info_cd">Album details</string>
+
+    <!-- Common -->
+    <string name="back_cd">Back</string>
+
+    <!-- Album -->
+    <string name="album_cover_cd">Album cover</string>
+    <string name="album_tracks">Tracks</string>
+    <string name="album_save_library">Save to Library</string>
+    <string name="album_remove_library">Remove from Library</string>
+    <string name="album_add_favourite">Add to Spotify favourites</string>
+    <string name="album_favourite_added">Added to Spotify favourites</string>
+    <string name="album_type_album">Album</string>
+    <string name="album_type_single">Single</string>
+    <string name="album_type_compilation">Compilation</string>
+    <string name="toast_saved">Saved to your Library</string>
+    <string name="toast_removed">Removed from your Library</string>
+    <string name="toast_favourite_ok">Album added to your Spotify favourites</string>
+    <string name="error_missing_album">No album selected.</string>
+    <plurals name="track_count">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="library_empty">No saved albums yet. Open an album and tap “Save to Library”.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_en">English</string>
+    <string name="language_pt">Português</string>
+    <string name="settings_logout">Log out</string>
 </resources>

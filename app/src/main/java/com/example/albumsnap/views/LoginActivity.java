@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.albumsnap.R;
 import com.example.albumsnap.external.SpotifyAuthManager;
+import com.example.albumsnap.util.EdgeInsets;
 
 /** LoginView do diagrama de classes. */
 public class LoginActivity extends AppCompatActivity {
@@ -39,6 +40,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private void displayLogin() {
         setContentView(R.layout.activity_login);
+        EdgeInsets.applyTo(findViewById(R.id.loginRoot));
         findViewById(R.id.btnLogin).setOnClickListener(v -> connectSpotify());
     }
 
