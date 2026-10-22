@@ -63,7 +63,6 @@ public class MainMenuActivity extends AppCompatActivity {
         findViewById(R.id.btnCamera).setOnClickListener(v ->
                 startActivity(new Intent(this, CameraActivity.class)));
 
-        //DevShortcut.attach(this, findViewById(R.id.btnCamera));   // TEMPORARIO: apagar
 
         recentAdapter = new AlbumAdapter(this, new AlbumAdapter.Listener() {
             @Override
