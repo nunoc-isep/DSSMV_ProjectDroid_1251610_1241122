@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.widget.Toast;
+import android.widget.ImageButton;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -17,8 +18,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.example.albumsnap.R;
 import com.example.albumsnap.controllers.CameraController;
-import com.example.albumsnap.dto.AlbumDTO;
+import com.example.albumsnap.model.Album;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +30,7 @@ public class CameraActivity extends AppCompatActivity {
 
     private CameraController cameraController;
     private Uri photoUri;
+    private boolean isCameraOpened = false; // Flag para evitar abertura dupla de câmera
 
     private final ActivityResultLauncher<Intent> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -49,6 +52,7 @@ public class CameraActivity extends AppCompatActivity {
                 if (isGranted) {
                     openCamera();
                 } else {
+                    // Se o utilizador recusar a permissão
                     Toast.makeText(this, "Camera permission denied.", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -57,8 +61,20 @@ public class CameraActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        setContentView(R.layout.activity_camera);
+        // Configura o botão de voltar
+        ImageButton btnBack = findViewById(R.id.btnBack);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
+
         cameraController = new CameraController(this);
         checkPermissionAndOpenCamera();
+
+        if(savedInstanceState == null && !isCameraOpened){
+            isCameraOpened = true;
+            checkPermissionAndOpenCamera();
+        }
     }
 
     private void checkPermissionAndOpenCamera() {
@@ -91,6 +107,8 @@ public class CameraActivity extends AppCompatActivity {
                 e.printStackTrace();
                 Toast.makeText(this, "Error creating temporary file.", Toast.LENGTH_SHORT).show();
             }
+        } else {
+            Toast.makeText(this, "Camera application not found.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -99,7 +117,7 @@ public class CameraActivity extends AppCompatActivity {
 
         cameraController.processCapturedImage(bitmap, new CameraController.CameraCallback() {
             @Override
-            public void onAlbumsRecognized(List<AlbumDTO> albums) {
+            public void onAlbumsRecognized(List<Album> albums) {
                 runOnUiThread(() -> {
                     if (albums.size() == 1) {
                         // 1 Resultado: Abre diretamente
@@ -113,30 +131,32 @@ public class CameraActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
-                runOnUiThread(() -> Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> {Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();});
             }
         });
     }
 
-    private void showAlbumSelectionDialog(List<AlbumDTO> albums) {
+    private void showAlbumSelectionDialog(List<Album> albums) {
         String[] titles = new String[albums.size()];
         for (int i = 0; i < albums.size(); i++) {
-            titles[i] = albums.get(i).getName();
+            // Utiliza o getter correto da classe Album (getTitle)
+            titles[i] = albums.get(i).getTitle();
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Selecione o Álbum Correto:");
+        builder.setTitle("Choose the correct album:");
         builder.setItems(titles, (dialog, which) -> {
-            AlbumDTO selectedAlbum = albums.get(which);
+            Album selectedAlbum = albums.get(which);
             openAlbumDetails(selectedAlbum);
         });
-        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
         builder.show();
     }
 
-    private void openAlbumDetails(AlbumDTO album) {
+    private void openAlbumDetails(Album album) {
         Intent intent = new Intent(CameraActivity.this, AlbumActivity.class);
-        intent.putExtra(AlbumActivity.EXTRA_SPOTIFY_ID, album.getId());
+        // Utiliza o getter correto da classe Album (getSpotifyId)
+        intent.putExtra(AlbumActivity.EXTRA_SPOTIFY_ID, album.getSpotifyId());
         intent.putExtra(AlbumActivity.EXTRA_FROM_SCAN, true);
         startActivity(intent);
         finish();

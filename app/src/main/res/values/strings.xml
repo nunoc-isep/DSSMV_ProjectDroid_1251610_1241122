@@ -41,6 +41,9 @@
     <string name="library_title">Library</string>
     <string name="library_empty">No saved albums yet. Open an album and tap “Save to Library”.</string>
 
+    <!-- Camera -->
+    <string name="camera_title">Camera</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_theme">Theme</string>

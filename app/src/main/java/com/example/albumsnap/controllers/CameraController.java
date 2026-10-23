@@ -3,7 +3,6 @@ package com.example.albumsnap.controllers;
 import android.content.Context;
 import android.graphics.Bitmap;
 
-import com.example.albumsnap.dto.AlbumDTO;
 import com.example.albumsnap.external.GoogleCloudVisionService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
@@ -26,7 +25,7 @@ public class CameraController {
     private final ImageRecognitionService imageRecognitionService;
 
     public interface CameraCallback {
-        void onAlbumsRecognized(List<AlbumDTO> albums);
+        void onAlbumsRecognized(List<Album> albums);
         void onError(String message);
     }
 
@@ -49,32 +48,25 @@ public class CameraController {
                 if (searchQuery != null && !searchQuery.isEmpty()) {
                     new Thread(() -> {
                         try {
+                            // Obtém diretamente a lista de modelos de domínio (Album)
                             List<Album> results = albumSearchService.searchAlbums(searchQuery);
 
                             if (results != null && !results.isEmpty()) {
-                                List<AlbumDTO> dtos = new ArrayList<>();
-                                for (Album album : results) {
-                                    AlbumDTO dto = new AlbumDTO();
-                                    dto.setId(album.getSpotifyId());
-                                    dto.setName(album.getTitle());
-                                    dto.setCoverUrl(album.getCoverUrl());
-                                    dtos.add(dto);
-                                }
 
                                 // REGRA DE DECISÃO:
                                 // Se o primeiro resultado for quase idêntico à pesquisa, envia apenas esse (Abre Direto).
-                                // Se a pesquisa for abrangente, envia a lista (Mostra o Menu de Escolha).
-                                String topTitle = dtos.get(0).getName().toLowerCase();
+                                // Se a pesquisa for abrangente, envia a lista completa (Mostra o Menu de Escolha).
+                                String topTitle = results.get(0).getTitle().toLowerCase();
                                 String queryLower = searchQuery.toLowerCase();
 
                                 if (topTitle.contains(queryLower) || queryLower.contains(topTitle)) {
-                                    // Correspondência forte: envia apenas 1 elemento para abrir diretamente
-                                    List<AlbumDTO> singleResult = new ArrayList<>();
-                                    singleResult.add(dtos.get(0));
+                                    // Correspondência forte: envia apenas o 1º elemento
+                                    List<Album> singleResult = new ArrayList<>();
+                                    singleResult.add(results.get(0));
                                     callback.onAlbumsRecognized(singleResult);
                                 } else {
-                                    // Correspondência incerta: envia todos para o utilizador escolher no menu
-                                    callback.onAlbumsRecognized(dtos);
+                                    // Correspondência incerta: envia todos para o menu de escolha
+                                    callback.onAlbumsRecognized(results);
                                 }
 
                             } else {
