@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== MODO ESCURO: roxo (mesmos nomes que em values/colors.xml) ===== -->
+    <color name="theme_primary">#FFB79CFF</color>
+    <color name="theme_on_primary">#FF2A0C6B</color>
+    <color name="theme_primary_container">#FF4B2DAE</color>
+    <color name="theme_on_primary_container">#FFE8DDFF</color>
+    <color name="theme_secondary">#FFD0C2FF</color>
+    <color name="theme_on_secondary">#FF34285C</color>
+    <color name="theme_secondary_container">#FF433866</color>
+    <color name="theme_on_secondary_container">#FFE9E0FF</color>
+    <color name="theme_background">#FF15101F</color>
+    <color name="theme_on_background">#FFE9E1F4</color>
+    <color name="theme_surface">#FF15101F</color>
+    <color name="theme_on_surface">#FFE9E1F4</color>
+    <color name="theme_surface_variant">#FF2C2440</color>
+    <color name="theme_on_surface_variant">#FFCDC4DC</color>
+    <color name="theme_outline">#FF968EA8</color>
+</resources>

@@ -53,5 +53,5 @@
         android:focusable="false"
         android:focusableInTouchMode="false"
         android:src="@drawable/ic_info"
-        app:tint="?attr/colorPrimary" />
+        app:tint="?attr/colorSecondary" />
 </LinearLayout>

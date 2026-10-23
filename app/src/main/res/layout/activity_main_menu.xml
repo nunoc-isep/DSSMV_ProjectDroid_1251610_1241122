@@ -31,20 +31,20 @@
         app:tint="?attr/colorOnSurface" />
 
     <ImageButton
-            android:id="@+id/btnCamera"
-            android:layout_width="168dp"
-            android:layout_height="168dp"
-            android:background="@drawable/bg_camera_button"
-            android:contentDescription="@string/menu_camera_cd"
-            android:padding="48dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_camera"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.34"
-            app:tint="?attr/colorOnPrimary"/>
+        android:id="@+id/btnCamera"
+        android:layout_width="168dp"
+        android:layout_height="168dp"
+        android:background="@drawable/bg_camera_button"
+        android:contentDescription="@string/menu_camera_cd"
+        android:padding="48dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_camera"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.34"
+        app:tint="?attr/colorOnPrimary" />
 
     <TextView
         android:id="@+id/txtScanHint"

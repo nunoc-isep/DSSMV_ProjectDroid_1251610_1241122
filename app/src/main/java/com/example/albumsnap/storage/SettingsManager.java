@@ -32,7 +32,7 @@ public class SettingsManager {
     }
 
     public String getTheme() {
-        return prefs.getString(KEY_THEME, THEME_SYSTEM);
+        return prefs.getString(KEY_THEME, THEME_DARK);   // a app arranca em modo escuro
     }
 
     public void setTheme(String theme) {

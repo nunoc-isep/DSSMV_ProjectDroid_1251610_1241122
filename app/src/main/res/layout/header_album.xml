@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_horizontal"
@@ -50,7 +51,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="@string/album_save_library" />
+        android:text="@string/album_save_library"
+        android:textColor="?attr/colorSecondary"
+        app:strokeColor="?attr/colorSecondary" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnFavourite"

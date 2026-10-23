@@ -3,15 +3,26 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Marca AlbumSnap -->
-    <color name="brand_primary">#FF4F3BD6</color>
-    <color name="brand_primary_container">#FFE4DFFF</color>
-    <color name="brand_on_primary_container">#FF14006B</color>
-    <color name="brand_primary_dark">#FFC8BFFF</color>
-    <color name="brand_on_primary_dark">#FF20008A</color>
-    <color name="brand_primary_container_dark">#FF3A28B8</color>
-    <color name="brand_on_primary_container_dark">#FFE4DFFF</color>
+    <!-- ===== MODO CLARO: verde (um pouco mais claro que o verde do Spotify, #1DB954) ===== -->
+    <!-- Cor principal: botoes, botao da camara. O texto por cima e escuro (com branco nao se le). -->
+    <color name="theme_primary">#FF2AC661</color>
+    <color name="theme_on_primary">#FF052E14</color>
+    <color name="theme_primary_container">#FFC6F5D6</color>
+    <color name="theme_on_primary_container">#FF0A3D1E</color>
+    <!-- Verde escuro para icones e texto de destaque sobre o fundo claro -->
+    <color name="theme_secondary">#FF187A41</color>
+    <color name="theme_on_secondary">#FFFFFFFF</color>
+    <color name="theme_secondary_container">#FFDDEFE2</color>
+    <color name="theme_on_secondary_container">#FF123D24</color>
+    <!-- Fundos e texto -->
+    <color name="theme_background">#FFF6FBF6</color>
+    <color name="theme_on_background">#FF171D18</color>
+    <color name="theme_surface">#FFF6FBF6</color>
+    <color name="theme_on_surface">#FF171D18</color>
+    <color name="theme_surface_variant">#FFDCE5DC</color>
+    <color name="theme_on_surface_variant">#FF404941</color>
+    <color name="theme_outline">#FF707970</color>
 
-    <!-- Fundo do icone da app -->
-    <color name="ic_launcher_background">#FF4F3BD6</color>
+    <!-- Fundo do icone da app (roxo, igual nos dois modos) -->
+    <color name="ic_launcher_background">#FF6A45E6</color>
 </resources>
