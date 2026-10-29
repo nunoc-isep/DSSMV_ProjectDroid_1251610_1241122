@@ -2,10 +2,13 @@ package com.example.albumsnap.external;
 
 import android.graphics.Bitmap;
 import android.util.Base64;
+import android.util.Log;
 
+import com.example.albumsnap.BuildConfig;
 import com.example.albumsnap.services.ImageRecognitionService;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -18,14 +21,15 @@ import okhttp3.Response;
 
 public class GoogleCloudVisionService implements ImageRecognitionService {
 
-    private static final String API_KEY = "AIzaSyCPlW7hI873ryzEurP8yfXnbKhGWtIsdv4";
+    private static final String TAG = "GoogleCloudVisionService";
+    private static final String API_KEY = BuildConfig.VISION_API_KEY;
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate?key=" + API_KEY;
 
     @Override
     public void analyzeImage(Bitmap bitmap, VisionCallback callback) {
         new Thread(() -> {
             try {
-                // 1. Recortar a área central (80%) para remover ruído de fundo (fundo, mesas, mãos)
+                // 1. Recortar a área central (80%) para remover ruído de fundo
                 Bitmap croppedBitmap = cropCenter(bitmap);
 
                 // 2. Redimensionar para tamanho ideal para a Cloud Vision API
@@ -36,31 +40,8 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                 byte[] imageBytes = byteArrayOutputStream.toByteArray();
                 String base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP);
 
-                // 3. Montar o pedido JSON
-                JSONObject requestBodyJson = new JSONObject();
-                JSONArray requestsArray = new JSONArray();
-
-                JSONObject requestItem = new JSONObject();
-                JSONObject imageObject = new JSONObject();
-                imageObject.put("content", base64Image);
-                requestItem.put("image", imageObject);
-
-                JSONArray featuresArray = new JSONArray();
-
-                // Deteção de Texto (OCR)
-                JSONObject textFeature = new JSONObject();
-                textFeature.put("type", "TEXT_DETECTION");
-                featuresArray.put(textFeature);
-
-                // Deteção Web (Pesquisa Visual)
-                JSONObject webFeature = new JSONObject();
-                webFeature.put("type", "WEB_DETECTION");
-                webFeature.put("maxResults", 10);
-                featuresArray.put(webFeature);
-
-                requestItem.put("features", featuresArray);
-                requestsArray.put(requestItem);
-                requestBodyJson.put("requests", requestsArray);
+                // 3. Montar o pedido JSON (método extraído)
+                JSONObject requestBodyJson = buildRequestBodyJson(base64Image);
 
                 // 4. Executar chamada HTTP POST
                 OkHttpClient client = new OkHttpClient();
@@ -73,7 +54,8 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                         .build();
 
                 try (Response response = client.newCall(request).execute()) {
-                    if (response.isSuccessful() && response.body() != null) {
+                    if (response.isSuccessful()) {
+                        // response.body() é garantido não ser nulo quando response.isSuccessful() é true
                         String result = response.body().string();
                         callback.onSuccess(result);
                     } else {
@@ -81,14 +63,44 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                     }
                 }
             } catch (Exception e) {
+                Log.e(TAG, "Erro ao processar imagem na Cloud Vision API", e);
                 callback.onError(e);
             }
         }).start();
     }
 
     /**
-     * Recorta os 80% centrais da imagem original para focar a capa do álbum.
+     * Constrói a estrutura do objeto JSON enviado para a Vision API.
      */
+    private JSONObject buildRequestBodyJson(String base64Image) throws JSONException {
+        JSONObject requestBodyJson = new JSONObject();
+        JSONArray requestsArray = new JSONArray();
+
+        JSONObject requestItem = new JSONObject();
+        JSONObject imageObject = new JSONObject();
+        imageObject.put("content", base64Image);
+        requestItem.put("image", imageObject);
+
+        JSONArray featuresArray = new JSONArray();
+
+        // Deteção de Texto (OCR)
+        JSONObject textFeature = new JSONObject();
+        textFeature.put("type", "TEXT_DETECTION");
+        featuresArray.put(textFeature);
+
+        // Deteção Web (Pesquisa Visual)
+        JSONObject webFeature = new JSONObject();
+        webFeature.put("type", "WEB_DETECTION");
+        webFeature.put("maxResults", 10);
+        featuresArray.put(webFeature);
+
+        requestItem.put("features", featuresArray);
+        requestsArray.put(requestItem);
+        requestBodyJson.put("requests", requestsArray);
+
+        return requestBodyJson;
+    }
+
     private Bitmap cropCenter(Bitmap src) {
         if (src == null) return null;
         int width = src.getWidth();
@@ -102,10 +114,6 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
         return Bitmap.createBitmap(src, startX, startY, cropWidth, cropHeight);
     }
 
-    /**
-     * Tenta obter o texto detetado (OCR).
-     * Se a capa não tiver texto, recorre ao resultado visual da WEB_DETECTION.
-     */
     public static String parseDetectedText(String jsonResponse) {
         try {
             JSONObject root = new JSONObject(jsonResponse);
@@ -127,7 +135,6 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
             JSONObject webDetection = firstResponse.optJSONObject("webDetection");
             if (webDetection != null) {
 
-                // A. Procurar Entidades Web com boa relevância e filtrar rótulos genéricos
                 JSONArray webEntities = webDetection.optJSONArray("webEntities");
                 if (webEntities != null && webEntities.length() > 0) {
                     for (int i = 0; i < webEntities.length(); i++) {
@@ -135,36 +142,39 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                         String description = entity.optString("description", "").trim();
                         float score = (float) entity.optDouble("score", 0.0);
 
-                        if (!description.isEmpty() && !isGenericLabel(description) && score > 0.3) {
+                        // Condição direta sem negação
+                        if (!description.isEmpty() && isSpecificLabel(description) && score > 0.3) {
                             return description;
                         }
                     }
                 }
 
-                // B. Palpite da Google (Best Guess)
                 JSONArray bestGuessLabels = webDetection.optJSONArray("bestGuessLabels");
                 if (bestGuessLabels != null && bestGuessLabels.length() > 0) {
                     String bestGuess = bestGuessLabels.getJSONObject(0).optString("label", "").trim();
-                    if (!bestGuess.isEmpty() && !isGenericLabel(bestGuess)) {
+                    // Condição direta sem negação
+                    if (!bestGuess.isEmpty() && isSpecificLabel(bestGuess)) {
                         return bestGuess;
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Erro ao analisar o JSON de resposta da Cloud Vision", e);
         }
         return "";
     }
 
     /**
-     * Filtro de palavras genéricas para evitar pesquisas irrelevantes no Spotify.
+     * Verifica se o rótulo é específico e relevante (não genérico).
      */
-    private static boolean isGenericLabel(String label) {
+    private static boolean isSpecificLabel(String label) {
         String lower = label.toLowerCase();
-        return lower.contains("art") || lower.contains("illustration") ||
+        boolean isGeneric = lower.contains("art") || lower.contains("illustration") ||
                 lower.contains("poster") || lower.contains("album cover") ||
                 lower.contains("graphic design") || lower.contains("font") ||
                 lower.contains("picture") || lower.contains("image") ||
                 lower.contains("soundtrack") || lower.contains("compilation");
+
+        return !isGeneric;
     }
 }

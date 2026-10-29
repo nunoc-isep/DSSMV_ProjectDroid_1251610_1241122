@@ -4,12 +4,15 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.ImageDecoder;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.widget.Toast;
+import android.util.Log;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -28,22 +31,29 @@ import java.util.List;
 
 public class CameraActivity extends AppCompatActivity {
 
+    private static final String TAG = "CameraActivity";
+
     private CameraController cameraController;
     private Uri photoUri;
-    private boolean isCameraOpened = false; // Flag para evitar abertura dupla de câmera
+    private boolean isCameraOpened = false;
 
     private final ActivityResultLauncher<Intent> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && photoUri != null) {
                     try {
-                        Bitmap fullBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), photoUri);
+                        Bitmap fullBitmap = loadBitmapFromUri(photoUri);
                         if (fullBitmap != null) {
                             processImage(fullBitmap);
+                        } else {
+                            finish();
                         }
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error loading captured image", e);
                         Toast.makeText(this, "Error loading captured image.", Toast.LENGTH_SHORT).show();
+                        finish();
                     }
+                } else {
+                    finish();
                 }
             });
 
@@ -52,8 +62,8 @@ public class CameraActivity extends AppCompatActivity {
                 if (isGranted) {
                     openCamera();
                 } else {
-                    // Se o utilizador recusar a permissão
                     Toast.makeText(this, "Camera permission denied.", Toast.LENGTH_SHORT).show();
+                    finish();
                 }
             });
 
@@ -62,16 +72,15 @@ public class CameraActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_camera);
-        // Configura o botão de voltar
+
         ImageButton btnBack = findViewById(R.id.btnBack);
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
         }
 
         cameraController = new CameraController(this);
-        checkPermissionAndOpenCamera();
 
-        if(savedInstanceState == null && !isCameraOpened){
+        if (savedInstanceState == null && !isCameraOpened) {
             isCameraOpened = true;
             checkPermissionAndOpenCamera();
         }
@@ -104,11 +113,27 @@ public class CameraActivity extends AppCompatActivity {
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
                 takePictureLauncher.launch(takePictureIntent);
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error creating temporary file for camera", e);
                 Toast.makeText(this, "Error creating temporary file.", Toast.LENGTH_SHORT).show();
+                finish();
             }
         } else {
             Toast.makeText(this, "Camera application not found.", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
+    /**
+     * Carrega o Bitmap de forma compatível com todas as versões do Android,
+     * evitando o uso do método descontinuado get() do MediaStore.
+     */
+    @SuppressWarnings("deprecation")
+    private Bitmap loadBitmapFromUri(Uri uri) throws IOException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.Source source = ImageDecoder.createSource(getContentResolver(), uri);
+            return ImageDecoder.decodeBitmap(source);
+        } else {
+            return MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
         }
     }
 
@@ -120,10 +145,8 @@ public class CameraActivity extends AppCompatActivity {
             public void onAlbumsRecognized(List<Album> albums) {
                 runOnUiThread(() -> {
                     if (albums.size() == 1) {
-                        // 1 Resultado: Abre diretamente
                         openAlbumDetails(albums.get(0));
                     } else {
-                        // Múltiplos Resultados: Mostra o Menu de Escolha
                         showAlbumSelectionDialog(albums);
                     }
                 });
@@ -131,7 +154,10 @@ public class CameraActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
-                runOnUiThread(() -> {Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();});
+                runOnUiThread(() -> {
+                    Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();
+                    finish();
+                });
             }
         });
     }
@@ -139,7 +165,6 @@ public class CameraActivity extends AppCompatActivity {
     private void showAlbumSelectionDialog(List<Album> albums) {
         String[] titles = new String[albums.size()];
         for (int i = 0; i < albums.size(); i++) {
-            // Utiliza o getter correto da classe Album (getTitle)
             titles[i] = albums.get(i).getTitle();
         }
 
@@ -149,13 +174,13 @@ public class CameraActivity extends AppCompatActivity {
             Album selectedAlbum = albums.get(which);
             openAlbumDetails(selectedAlbum);
         });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.setOnCancelListener(dialog -> finish());
+        builder.setNegativeButton("Cancel", (dialog, which) -> finish());
         builder.show();
     }
 
     private void openAlbumDetails(Album album) {
         Intent intent = new Intent(CameraActivity.this, AlbumActivity.class);
-        // Utiliza o getter correto da classe Album (getSpotifyId)
         intent.putExtra(AlbumActivity.EXTRA_SPOTIFY_ID, album.getSpotifyId());
         intent.putExtra(AlbumActivity.EXTRA_FROM_SCAN, true);
         startActivity(intent);
