@@ -15,66 +15,120 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
- * Previews de 30 s atraves da API publica da Deezer (sem chave nem login).
- * Pesquisa por artista + titulo e escolhe o resultado cujo titulo coincide.
+ * Previews de 30s através da API pública da Deezer (sem chave nem login).
  */
 public class DeezerPreviewService implements PreviewService {
 
     private static final String SEARCH_URL = "https://api.deezer.com/search";
 
     @Override
+    public Map<String, String> fetchAlbumPreviews(String artist, String albumTitle) throws IOException {
+        Map<String, String> previewsMap = new HashMap<>();
+
+        String cleanedAlbum = cleanTitle(albumTitle);
+        if (cleanedAlbum.isEmpty()) return previewsMap;
+
+        String query = "album:\"" + cleanedAlbum.replace('"', ' ') + "\"";
+        if (artist != null && !artist.trim().isEmpty()) {
+            query = "artist:\"" + artist.replace('"', ' ') + "\" " + query;
+        }
+
+        String requestUrl = SEARCH_URL + "?q=" + URLEncoder.encode(query, "UTF-8") + "&limit=50";
+        JSONObject json = get(requestUrl);
+
+        JSONArray data = json.optJSONArray("data");
+        if (data == null) return previewsMap;
+
+        for (int i = 0; i < data.length(); i++) {
+            JSONObject item = data.optJSONObject(i);
+            if (item == null) continue;
+
+            String preview = item.optString("preview", "");
+            String trackTitle = item.optString("title", "");
+
+            if (!preview.isEmpty() && !trackTitle.isEmpty()) {
+                String normalizedKey = normalize(cleanTitle(trackTitle));
+                previewsMap.put(normalizedKey, secure(preview));
+            }
+        }
+
+        return previewsMap;
+    }
+
+    @Override
     public String findPreviewUrl(String artist, String title) throws IOException {
         String wanted = cleanTitle(title);
         if (wanted.isEmpty()) return null;
 
+        // 1ª Tentativa: Artista + Faixa
         String query = "track:\"" + wanted.replace('"', ' ') + "\"";
         if (artist != null && !artist.trim().isEmpty()) {
             query = "artist:\"" + artist.replace('"', ' ') + "\" " + query;
         }
 
-        JSONObject json = get(SEARCH_URL + "?limit=10&q=" + URLEncoder.encode(query, "UTF-8"));
+        String url = searchDeezer(query, wanted);
+        if (url != null) return url;
+
+        // 2ª Tentativa (Fallback): Pesquisa simples sem aspas nem prefixos
+        String fallbackQuery = artist + " " + wanted;
+        return searchDeezer(fallbackQuery, wanted);
+    }
+
+    private String searchDeezer(String query, String wantedTitle) throws IOException {
+        JSONObject json = get(SEARCH_URL + "?q=" + URLEncoder.encode(query, "UTF-8"));
         JSONArray data = json.optJSONArray("data");
         if (data == null) return null;
 
-        String wantedKey = normalize(wanted);
-        String partial = null;   // melhor alternativa se nenhum titulo for igual
+        String wantedKey = normalize(wantedTitle);
+        String partialMatchUrl = null;
+
         for (int i = 0; i < data.length(); i++) {
             JSONObject item = data.optJSONObject(i);
             if (item == null) continue;
+
             String preview = item.optString("preview", "");
             if (preview.isEmpty()) continue;
 
             String key = normalize(cleanTitle(item.optString("title", "")));
-            if (key.equals(wantedKey)) return secure(preview);
-            if (partial == null && !key.isEmpty()
-                    && (key.contains(wantedKey) || wantedKey.contains(key))) {
-                partial = preview;
+
+            // Correspondência exata
+            if (key.equals(wantedKey)) {
+                return secure(preview);
+            }
+
+            // Guardar correspondência parcial se não encontrar exata
+            if (partialMatchUrl == null && !key.isEmpty() && (key.contains(wantedKey) || wantedKey.contains(key))) {
+                partialMatchUrl = preview;
             }
         }
-        return partial != null ? secure(partial) : null;
+
+        return partialMatchUrl != null ? secure(partialMatchUrl) : null;
     }
 
-    /** Tira sufixos como "- Remastered 2011" e parenteses, que variam entre servicos. */
-    static String cleanTitle(String title) {
+    public static String cleanTitle(String title) {
         if (title == null) return "";
-        String cleaned = title.replaceAll("\\s*[(\\[][^)\\]]*[)\\]]", "")
-                .replaceAll("\\s+-\\s+.*$", "")
+        String cleaned = title
+                .replaceAll("(?i)\\s*\\(feat\\..*?\\)", "")        // Remove (feat. ...)
+                .replaceAll("(?i)\\s*\\[feat\\..*?\\]", "")        // Remove [feat. ...]
+                .replaceAll("(?i)\\s*-\\s*.*remaster.*$", "")     // Remove - Remastered
+                .replaceAll("\\s*[(\\[][^)\\]]*[)\\]]", "")        // Remove o que estiver entre parênteses
+                .replaceAll("\\s+-\\s+.*$", "")                    // Remove sufixos com travessão
                 .trim();
         return cleaned.isEmpty() ? title.trim() : cleaned;
     }
 
-    /** Minusculas, sem acentos nem pontuacao, para comparar titulos. */
-    static String normalize(String text) {
+    public static String normalize(String text) {
         String s = Normalizer.normalize(text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD);
         return s.replaceAll("\\p{M}+", "")
                 .replaceAll("[^\\p{L}\\p{N}]+", " ")
                 .trim();
     }
 
-    /** O Android bloqueia trafego http (cleartext) por omissao. */
     private static String secure(String url) {
         return url.startsWith("http://") ? "https://" + url.substring("http://".length()) : url;
     }
@@ -95,7 +149,6 @@ public class DeezerPreviewService implements PreviewService {
             }
             try {
                 JSONObject json = new JSONObject(text);
-                // A Deezer responde 200 com {"error": {...}} em alguns casos (ex.: limite de pedidos)
                 if (json.has("error")) {
                     throw new IOException("Deezer error: " + json.optJSONObject("error"));
                 }

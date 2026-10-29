@@ -84,11 +84,19 @@ public class AlbumActivity extends AppCompatActivity {
         trackAdapter = new TrackAdapter(this);
         listTracks.setAdapter(trackAdapter);
         trackAdapter.setOnPreviewClickListener(this::onPreviewClick);
+
         previewPlayer = new PreviewPlayer(new PreviewPlayer.Listener() {
             @Override
             public void onPlaying() {
                 if (previewTrackId != null) {
                     trackAdapter.setPreviewState(previewTrackId, TrackAdapter.PreviewState.PLAYING);
+                }
+            }
+
+            @Override
+            public void onPaused() {
+                if (previewTrackId != null) {
+                    trackAdapter.setPreviewState(previewTrackId, TrackAdapter.PreviewState.IDLE);
                 }
             }
 
@@ -267,14 +275,21 @@ public class AlbumActivity extends AppCompatActivity {
         });
     }
 
-    /** Toque no botao de uma faixa: inicia a preview, ou para-a se for a que ja esta ativa. */
+    /** Toque no botao de uma faixa: alterna entre Play, Pause e troca de faixa. */
     private void onPreviewClick(final Track track) {
         final String id = track.getSpotifyId();
+
+        // Clicou na mesma faixa que ja esta ativa
         if (Objects.equals(id, previewTrackId)) {
-            stopPreview();
+            if (previewPlayer.isPlaying()) {
+                previewPlayer.pause();
+            } else if (previewPlayer.isPaused()) {
+                previewPlayer.play(previewUrls.get(id));
+            }
             return;
         }
 
+        // Clicou numa faixa diferente
         stopPreview();
         previewTrackId = id;
         trackAdapter.setPreviewState(id, TrackAdapter.PreviewState.LOADING);
@@ -289,10 +304,12 @@ public class AlbumActivity extends AppCompatActivity {
             @Override
             public void onResult(String url) {
                 if (isFinishing() || isDestroyed()) return;
-                previewUrls.put(id, url != null ? url : "");
-                // O utilizador pode ter mudado de faixa ou cancelado entretanto
+
+                String finalUrl = (url != null) ? url : "";
+                previewUrls.put(id, finalUrl);
+
                 if (!Objects.equals(id, previewTrackId)) return;
-                startPreview(url);
+                startPreview(finalUrl);
             }
 
             @Override

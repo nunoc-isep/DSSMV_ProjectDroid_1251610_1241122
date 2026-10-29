@@ -20,6 +20,7 @@ import com.example.albumsnap.util.Background;
 import com.example.albumsnap.util.Callback;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Logica do ecra do album: obter o album, guardar na Library da app,
@@ -135,13 +136,22 @@ public class AlbumController {
         }, callback);
     }
 
-    /** URL da preview (30 s) da faixa; o resultado e null se nao houver preview. */
+    /** URL da preview (30 s) da faixa; o resultado é null se não houver preview. */
     public void getPreviewUrl(final Album album, final Track track, Callback<String> callback) {
         final String artist = album.getArtists().isEmpty() ? "" : album.getArtists().get(0).getName();
+        final String albumTitle = album.getTitle();
+
         Background.run(new Background.Task<String>() {
             @Override
             public String call() throws Exception {
-                return previewService.findPreviewUrl(artist, track.getTitle());
+                // Tenta procurar a faixa no contexto do artista e album no Deezer
+                String url = previewService.findPreviewUrl(artist, track.getTitle());
+                if (url == null && albumTitle != null && !albumTitle.isEmpty()) {
+                    Map<String, String> albumPreviews = previewService.fetchAlbumPreviews(artist, albumTitle);
+                    String normalizedTrack = DeezerPreviewService.normalize(DeezerPreviewService.cleanTitle(track.getTitle()));
+                    url = albumPreviews.get(normalizedTrack);
+                }
+                return url;
             }
         }, callback);
     }

@@ -4,31 +4,34 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 
 /**
- * Reproduz uma preview de cada vez (MediaPlayer em modo assincrono).
- * Os callbacks correm na UI thread. stop() e release() nao chamam o Listener.
+ * Reproduz uma preview de cada vez (MediaPlayer em modo assíncrono).
+ * Suporta Play, Pause e Resume.
  */
 public class PreviewPlayer {
 
     public interface Listener {
-        /** O audio comecou a tocar. */
         void onPlaying();
-
-        /** A preview chegou ao fim. */
+        void onPaused();
         void onFinished();
-
-        /** Falhou a preparar ou a reproduzir. */
         void onError();
     }
 
     private final Listener listener;
     private MediaPlayer player;
+    private boolean isPaused = false;
 
     public PreviewPlayer(Listener listener) {
         this.listener = listener;
     }
 
-    /** Para o que estiver a tocar e comeca a preparar o novo URL. */
     public void play(String url) {
+        if (player != null && isPaused) {
+            player.start();
+            isPaused = false;
+            listener.onPlaying();
+            return;
+        }
+
         release();
 
         final MediaPlayer mp = new MediaPlayer();
@@ -38,17 +41,19 @@ public class PreviewPlayer {
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build());
 
-        // So reage a callbacks do player atual (p == player); os de players ja libertados sao ignorados
         mp.setOnPreparedListener(p -> {
             if (p != player) return;
             p.start();
+            isPaused = false;
             listener.onPlaying();
         });
+
         mp.setOnCompletionListener(p -> {
             if (p != player) return;
             release();
             listener.onFinished();
         });
+
         mp.setOnErrorListener((p, what, extra) -> {
             if (p == player) {
                 release();
@@ -66,19 +71,34 @@ public class PreviewPlayer {
         }
     }
 
-    /** Para e liberta o player, sem avisar o Listener. */
+    public void pause() {
+        if (player != null && player.isPlaying()) {
+            player.pause();
+            isPaused = true;
+            listener.onPaused();
+        }
+    }
+
+    public boolean isPlaying() {
+        return player != null && player.isPlaying();
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
     public void stop() {
         release();
     }
 
     public void release() {
         MediaPlayer mp = player;
-        player = null;     // antes do release, para ignorar callbacks que ainda cheguem
+        player = null;
+        isPaused = false;
         if (mp != null) {
             try {
                 mp.release();
             } catch (Exception ignored) {
-                // ja estava libertado
             }
         }
     }
