@@ -14,14 +14,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.albumsnap.R;
 import com.example.albumsnap.controllers.AlbumController;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Track;
 import com.example.albumsnap.util.Callback;
 import com.example.albumsnap.util.EdgeInsets;
 import com.example.albumsnap.util.ImageLoader;
+import com.example.albumsnap.util.PreviewPlayer;
 import com.example.albumsnap.views.adapters.TrackAdapter;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * AlbumView do diagrama: capa, nome, artista, outras informacoes e faixas, com os botoes
- * "Save to Library" (da app) e "Add to Spotify favourites".
+ * "Save to Library" (da app) e "Add to Spotify favourites". Cada faixa tem um botao
+ * play/pause para ouvir a preview de 30 s.
  *
  * Extras: EXTRA_SPOTIFY_ID (obrigatorio) e EXTRA_FROM_SCAN (true quando vem de uma
  * digitalizacao, para o album aparecer na caixa Recent).
@@ -49,6 +56,11 @@ public class AlbumActivity extends AppCompatActivity {
     private Button btnFavourite;
     private TrackAdapter trackAdapter;
 
+    // Previews: so uma faixa de cada vez; o URL fica em cache enquanto o ecra existe
+    private PreviewPlayer previewPlayer;
+    private String previewTrackId;                                   // faixa a carregar ou a tocar
+    private final Map<String, String> previewUrls = new HashMap<>();  // "" = sem preview
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,6 +83,26 @@ public class AlbumActivity extends AppCompatActivity {
         listTracks.addHeaderView(header, null, false);
         trackAdapter = new TrackAdapter(this);
         listTracks.setAdapter(trackAdapter);
+        trackAdapter.setOnPreviewClickListener(this::onPreviewClick);
+        previewPlayer = new PreviewPlayer(new PreviewPlayer.Listener() {
+            @Override
+            public void onPlaying() {
+                if (previewTrackId != null) {
+                    trackAdapter.setPreviewState(previewTrackId, TrackAdapter.PreviewState.PLAYING);
+                }
+            }
+
+            @Override
+            public void onFinished() {
+                stopPreview();
+            }
+
+            @Override
+            public void onError() {
+                stopPreview();
+                Toast.makeText(AlbumActivity.this, R.string.preview_error, Toast.LENGTH_SHORT).show();
+            }
+        });
         header.setVisibility(View.INVISIBLE);
 
         imgCover = header.findViewById(R.id.imgCover);
@@ -233,6 +265,74 @@ public class AlbumActivity extends AppCompatActivity {
                 Toast.makeText(AlbumActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    /** Toque no botao de uma faixa: inicia a preview, ou para-a se for a que ja esta ativa. */
+    private void onPreviewClick(final Track track) {
+        final String id = track.getSpotifyId();
+        if (Objects.equals(id, previewTrackId)) {
+            stopPreview();
+            return;
+        }
+
+        stopPreview();
+        previewTrackId = id;
+        trackAdapter.setPreviewState(id, TrackAdapter.PreviewState.LOADING);
+
+        String cached = previewUrls.get(id);
+        if (cached != null) {
+            startPreview(cached);
+            return;
+        }
+
+        controller.getPreviewUrl(album, track, new Callback<String>() {
+            @Override
+            public void onResult(String url) {
+                if (isFinishing() || isDestroyed()) return;
+                previewUrls.put(id, url != null ? url : "");
+                // O utilizador pode ter mudado de faixa ou cancelado entretanto
+                if (!Objects.equals(id, previewTrackId)) return;
+                startPreview(url);
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                if (!Objects.equals(id, previewTrackId)) return;
+                stopPreview();
+                Toast.makeText(AlbumActivity.this, R.string.preview_error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void startPreview(String url) {
+        if (url == null || url.isEmpty()) {
+            stopPreview();
+            Toast.makeText(this, R.string.preview_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        previewPlayer.play(url);   // o botao passa a pause quando o audio comecar (onPlaying)
+    }
+
+    /** Para o audio (se houver) e poe todos os botoes outra vez em "play". */
+    private void stopPreview() {
+        if (previewPlayer != null) previewPlayer.stop();
+        previewTrackId = null;
+        if (trackAdapter != null) {
+            trackAdapter.setPreviewState(null, TrackAdapter.PreviewState.IDLE);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopPreview();   // a preview nao continua com a app em segundo plano
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (previewPlayer != null) previewPlayer.release();
     }
 
     private void showError(String message) {

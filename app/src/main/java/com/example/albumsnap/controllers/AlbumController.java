@@ -2,16 +2,19 @@ package com.example.albumsnap.controllers;
 
 import android.content.Context;
 
+import com.example.albumsnap.external.DeezerPreviewService;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
 import com.example.albumsnap.external.SpotifyAlbumSearchService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAuthManager;
 import com.example.albumsnap.external.SpotifyFavouriteAlbumService;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Track;
 import com.example.albumsnap.repository.AlbumRepository;
 import com.example.albumsnap.repository.LocalAlbumRepository;
 import com.example.albumsnap.services.AlbumSearchService;
 import com.example.albumsnap.services.FavouriteAlbumService;
+import com.example.albumsnap.services.PreviewService;
 import com.example.albumsnap.storage.SqliteAlbumRepository;
 import com.example.albumsnap.util.Background;
 import com.example.albumsnap.util.Callback;
@@ -19,8 +22,9 @@ import com.example.albumsnap.util.Callback;
 import java.util.List;
 
 /**
- * Logica do ecra do album: obter o album, guardar na Library da app e
- * adicionar aos favoritos do Spotify. Tudo corre fora da UI thread.
+ * Logica do ecra do album: obter o album, guardar na Library da app,
+ * adicionar aos favoritos do Spotify e obter previews das faixas.
+ * Tudo corre fora da UI thread.
  */
 public class AlbumController {
 
@@ -38,23 +42,27 @@ public class AlbumController {
     private final AlbumSearchService searchService;
     private final FavouriteAlbumService favouriteService;
     private final LocalAlbumRepository localRepository;
+    private final PreviewService previewService;
 
     public AlbumController(AlbumRepository remoteRepository, AlbumSearchService searchService,
-                           FavouriteAlbumService favouriteService, LocalAlbumRepository localRepository) {
+                           FavouriteAlbumService favouriteService, LocalAlbumRepository localRepository,
+                           PreviewService previewService) {
         this.remoteRepository = remoteRepository;
         this.searchService = searchService;
         this.favouriteService = favouriteService;
         this.localRepository = localRepository;
+        this.previewService = previewService;
     }
 
-    /** Liga as pecas reais (Spotify + SQLite). */
+    /** Liga as pecas reais (Spotify + Deezer + SQLite). */
     public static AlbumController create(Context context) {
         SpotifyAuthManager auth = SpotifyAuthManager.getInstance(context);
         SpotifyApiClient client = new SpotifyApiClient(auth);
         SpotifyFavouriteAlbumService favourite = new SpotifyFavouriteAlbumService(client);
         AlbumRepository repository = new SpotifyAlbumRepository(client, favourite);
         AlbumSearchService search = new SpotifyAlbumSearchService(client, repository);
-        return new AlbumController(repository, search, favourite, new SqliteAlbumRepository(context));
+        return new AlbumController(repository, search, favourite, new SqliteAlbumRepository(context),
+                new DeezerPreviewService());
     }
 
     public void getAlbum(final String spotifyId, Callback<Album> callback) {
@@ -123,6 +131,17 @@ public class AlbumController {
             public Boolean call() throws Exception {
                 favouriteService.addAlbum(spotifyId);
                 return Boolean.TRUE;
+            }
+        }, callback);
+    }
+
+    /** URL da preview (30 s) da faixa; o resultado e null se nao houver preview. */
+    public void getPreviewUrl(final Album album, final Track track, Callback<String> callback) {
+        final String artist = album.getArtists().isEmpty() ? "" : album.getArtists().get(0).getName();
+        Background.run(new Background.Task<String>() {
+            @Override
+            public String call() throws Exception {
+                return previewService.findPreviewUrl(artist, track.getTitle());
             }
         }, callback);
     }

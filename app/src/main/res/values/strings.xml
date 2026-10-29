@@ -32,6 +32,10 @@
     <string name="toast_removed">Removed from your Library</string>
     <string name="toast_favourite_ok">Album added to your Spotify favourites</string>
     <string name="error_missing_album">No album selected.</string>
+    <string name="preview_play_cd">Play preview</string>
+    <string name="preview_pause_cd">Stop preview</string>
+    <string name="preview_unavailable">No preview available for this track</string>
+    <string name="preview_error">Could not play the preview</string>
     <plurals name="track_count">
         <item quantity="one">%d track</item>
         <item quantity="other">%d tracks</item>

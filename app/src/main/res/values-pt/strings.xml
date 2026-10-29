@@ -33,10 +33,14 @@
     <string name="toast_removed">Removido da tua Biblioteca</string>
     <string name="toast_favourite_ok">Álbum adicionado aos teus favoritos do Spotify</string>
     <string name="error_missing_album">Nenhum álbum selecionado.</string>
+    <string name="preview_play_cd">Reproduzir pré-visualização</string>
+    <string name="preview_pause_cd">Parar pré-visualização</string>
+    <string name="preview_unavailable">Sem pré-visualização disponível para esta faixa</string>
+    <string name="preview_error">Não foi possível reproduzir a pré-visualização</string>
     <plurals name="track_count">
         <item quantity="one">%d faixa</item>
         <item quantity="other">%d faixas</item>
-    </plurals>
+    </plurals>i
 
     <!-- Biblioteca -->
     <string name="library_title">Biblioteca</string>
