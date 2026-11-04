@@ -55,7 +55,7 @@ public final class Background {
         if (e instanceof UnknownHostException
                 || e instanceof ConnectException
                 || e instanceof SocketTimeoutException) {
-            return "Could not reach the server. Check your internet connection.";
+            return ErrorMessages.NETWORK;
         }
         String message = e.getMessage();
         return message != null && !message.isEmpty() ? message : e.getClass().getSimpleName();

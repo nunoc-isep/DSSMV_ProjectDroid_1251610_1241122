@@ -24,6 +24,7 @@ import androidx.core.content.FileProvider;
 import com.example.albumsnap.R;
 import com.example.albumsnap.controllers.CameraController;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.util.ErrorMessages;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +50,7 @@ public class CameraActivity extends AppCompatActivity {
                         }
                     } catch (IOException e) {
                         Log.e(TAG, "Error loading captured image", e);
-                        Toast.makeText(this, "Error loading captured image.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.camera_error_load_image, Toast.LENGTH_SHORT).show();
                         finish();
                     }
                 } else {
@@ -62,7 +63,7 @@ public class CameraActivity extends AppCompatActivity {
                 if (isGranted) {
                     openCamera();
                 } else {
-                    Toast.makeText(this, "Camera permission denied.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_SHORT).show();
                     finish();
                 }
             });
@@ -114,11 +115,11 @@ public class CameraActivity extends AppCompatActivity {
                 takePictureLauncher.launch(takePictureIntent);
             } catch (IOException e) {
                 Log.e(TAG, "Error creating temporary file for camera", e);
-                Toast.makeText(this, "Error creating temporary file.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.camera_error_temp_file, Toast.LENGTH_SHORT).show();
                 finish();
             }
         } else {
-            Toast.makeText(this, "Camera application not found.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.camera_app_not_found, Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -138,7 +139,7 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void processImage(Bitmap bitmap) {
-        Toast.makeText(this, "Analyzing album cover...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.camera_analyzing, Toast.LENGTH_SHORT).show();
 
         cameraController.processCapturedImage(bitmap, new CameraController.CameraCallback() {
             @Override
@@ -153,8 +154,9 @@ public class CameraActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(int messageRes, String detail) {
                 runOnUiThread(() -> {
+                    String message = getString(messageRes, ErrorMessages.localize(CameraActivity.this, detail));
                     Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();
                     finish();
                 });
@@ -169,13 +171,13 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Choose the correct album:");
+        builder.setTitle(R.string.camera_choose_album);
         builder.setItems(titles, (dialog, which) -> {
             Album selectedAlbum = albums.get(which);
             openAlbumDetails(selectedAlbum);
         });
         builder.setOnCancelListener(dialog -> finish());
-        builder.setNegativeButton("Cancel", (dialog, which) -> finish());
+        builder.setNegativeButton(R.string.action_cancel, (dialog, which) -> finish());
         builder.show();
     }
 

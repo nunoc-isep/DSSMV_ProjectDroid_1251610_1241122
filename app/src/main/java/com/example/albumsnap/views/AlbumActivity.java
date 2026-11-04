@@ -17,6 +17,7 @@ import com.example.albumsnap.model.Album;
 import com.example.albumsnap.model.Track;
 import com.example.albumsnap.util.Callback;
 import com.example.albumsnap.util.EdgeInsets;
+import com.example.albumsnap.util.ErrorMessages;
 import com.example.albumsnap.util.ImageLoader;
 import com.example.albumsnap.util.PreviewPlayer;
 import com.example.albumsnap.views.adapters.TrackAdapter;
@@ -233,7 +234,8 @@ public class AlbumActivity extends AppCompatActivity {
                 public void onError(String message) {
                     if (isFinishing() || isDestroyed()) return;
                     updateLibraryButton();
-                    Toast.makeText(AlbumActivity.this, message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
+                            Toast.LENGTH_LONG).show();
                 }
             });
         } else {
@@ -250,7 +252,8 @@ public class AlbumActivity extends AppCompatActivity {
                 public void onError(String message) {
                     if (isFinishing() || isDestroyed()) return;
                     updateLibraryButton();
-                    Toast.makeText(AlbumActivity.this, message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
+                            Toast.LENGTH_LONG).show();
                 }
             });
         }
@@ -270,7 +273,8 @@ public class AlbumActivity extends AppCompatActivity {
             public void onError(String message) {
                 if (isFinishing() || isDestroyed()) return;
                 btnFavourite.setEnabled(true);
-                Toast.makeText(AlbumActivity.this, message, Toast.LENGTH_LONG).show();
+                Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
+                            Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -353,7 +357,7 @@ public class AlbumActivity extends AppCompatActivity {
     }
 
     private void showError(String message) {
-        txtError.setText(message);
+        txtError.setText(ErrorMessages.localize(this, message));
         txtError.setVisibility(View.VISIBLE);
     }
 }

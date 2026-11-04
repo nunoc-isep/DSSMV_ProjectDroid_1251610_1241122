@@ -3,6 +3,9 @@ package com.example.albumsnap.controllers;
 import android.content.Context;
 import android.graphics.Bitmap;
 
+import androidx.annotation.StringRes;
+
+import com.example.albumsnap.R;
 import com.example.albumsnap.external.GoogleCloudVisionService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
@@ -26,7 +29,11 @@ public class CameraController {
 
     public interface CameraCallback {
         void onAlbumsRecognized(List<Album> albums);
-        void onError(String message);
+        /**
+         * @param messageRes texto em strings.xml (traduzido pela Activity, que segue o idioma escolhido)
+         * @param detail     pormenor a juntar ao texto (%1$s), ou null
+         */
+        void onError(@StringRes int messageRes, String detail);
     }
 
     public CameraController(Context context) {
@@ -70,20 +77,20 @@ public class CameraController {
                                 }
 
                             } else {
-                                callback.onError("Album not found on Spotify.");
+                                callback.onError(R.string.error_album_not_found, null);
                             }
                         } catch (Exception e) {
-                            callback.onError("Spotify search error: " + e.getMessage());
+                            callback.onError(R.string.error_spotify_search, e.getMessage());
                         }
                     }).start();
                 } else {
-                    callback.onError("Could not read text or recognize album cover.");
+                    callback.onError(R.string.error_no_text, null);
                 }
             }
 
             @Override
             public void onError(Exception e) {
-                callback.onError("Error analyzing image: " + e.getMessage());
+                callback.onError(R.string.error_analyze_image, e.getMessage());
             }
         });
     }

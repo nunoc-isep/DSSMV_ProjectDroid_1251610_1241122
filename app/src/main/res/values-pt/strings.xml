@@ -6,6 +6,9 @@
     <string name="login_title">AlbumSnap</string>
     <string name="login_tagline">Fotografa a capa de um álbum e descobre o álbum</string>
     <string name="login_button">Entrar com o Spotify</string>
+    <string name="login_not_connected">Não ligado ao Spotify</string>
+    <string name="login_error_cancelled">Login cancelado ou recusado.</string>
+    <string name="login_error_invalid">Resposta de login inválida. Tenta outra vez.</string>
 
     <!-- Menu principal -->
     <string name="menu_library_cd">Biblioteca</string>
@@ -18,6 +21,21 @@
 
     <!-- Comum -->
     <string name="back_cd">Voltar</string>
+    <string name="action_cancel">Cancelar</string>
+
+    <!-- Erros -->
+    <string name="error_network">Não foi possível contactar o servidor. Verifica a ligação à Internet.</string>
+    <string name="error_no_session">Sem sessão ativa. Faz login outra vez.</string>
+    <string name="error_album_not_found">Álbum não encontrado no Spotify.</string>
+    <string name="error_spotify_search">Erro na pesquisa no Spotify: %1$s</string>
+    <string name="error_no_text">Não foi possível ler o texto nem reconhecer a capa do álbum.</string>
+    <string name="error_analyze_image">Erro ao analisar a imagem: %1$s</string>
+    <string name="error_unexpected_response">Resposta inesperada do Spotify.</string>
+    <string name="error_session_expired">A tua sessão do Spotify expirou. Termina a sessão nas Definições e entra outra vez.</string>
+    <string name="error_spotify_forbidden">O Spotify recusou o pedido. Verifica se esta conta foi adicionada à app no Spotify Dashboard e se as permissões foram concedidas.</string>
+    <string name="error_spotify_not_found">Não encontrado no Spotify.</string>
+    <string name="error_spotify_rate_limit">Demasiados pedidos ao Spotify. Tenta outra vez daqui a pouco.</string>
+    <string name="error_spotify_http">Erro do Spotify %1$d</string>
 
     <!-- Álbum -->
     <string name="album_cover_cd">Capa do álbum</string>
@@ -40,11 +58,20 @@
     <plurals name="track_count">
         <item quantity="one">%d faixa</item>
         <item quantity="other">%d faixas</item>
-    </plurals>i
+    </plurals>
 
     <!-- Biblioteca -->
     <string name="library_title">Biblioteca</string>
     <string name="library_empty">Ainda não há álbuns guardados. Abre um álbum e toca em “Guardar na Biblioteca”.</string>
+
+    <!-- Câmara -->
+    <string name="camera_title">Câmara</string>
+    <string name="camera_analyzing">A analisar a capa do álbum…</string>
+    <string name="camera_choose_album">Escolhe o álbum correto:</string>
+    <string name="camera_error_load_image">Erro ao carregar a imagem capturada.</string>
+    <string name="camera_permission_denied">Permissão da câmara recusada.</string>
+    <string name="camera_error_temp_file">Erro ao criar o ficheiro temporário.</string>
+    <string name="camera_app_not_found">Aplicação de câmara não encontrada.</string>
 
     <!-- Definições -->
     <string name="settings_title">Definições</string>

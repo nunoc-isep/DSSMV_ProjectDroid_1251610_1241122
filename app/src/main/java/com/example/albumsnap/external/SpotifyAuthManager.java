@@ -7,8 +7,10 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
+import android.util.Log;
 
 import com.example.albumsnap.services.SpotifyAuthService;
+import com.example.albumsnap.util.ErrorMessages;
 
 import org.json.JSONObject;
 
@@ -125,7 +127,8 @@ public class SpotifyAuthManager implements SpotifyAuthService {
 
         String error = data.getQueryParameter("error");
         if (error != null) {
-            callback.onError("Login cancelado ou recusado: " + error);
+            Log.w("SpotifyAuthManager", "Login recusado: " + error);
+            callback.onError(ErrorMessages.LOGIN_CANCELLED);
             return true;
         }
 
@@ -135,7 +138,7 @@ public class SpotifyAuthManager implements SpotifyAuthService {
         String expectedState = prefs.getString(KEY_STATE, null);
 
         if (code == null || verifier == null || expectedState == null || !expectedState.equals(state)) {
-            callback.onError("Resposta de login invalida. Tenta outra vez.");
+            callback.onError(ErrorMessages.LOGIN_INVALID);
             return true;
         }
         prefs.edit().remove(KEY_VERIFIER).remove(KEY_STATE).apply();
@@ -186,7 +189,7 @@ public class SpotifyAuthManager implements SpotifyAuthService {
     public synchronized String refreshAccessToken() throws IOException {
         String refresh = prefs.getString(KEY_REFRESH, null);
         if (refresh == null) {
-            throw new IOException("Sem sessao ativa. Faz login outra vez.");
+            throw new IOException(ErrorMessages.NO_SESSION);
         }
 
         Map<String, String> form = new LinkedHashMap<>();

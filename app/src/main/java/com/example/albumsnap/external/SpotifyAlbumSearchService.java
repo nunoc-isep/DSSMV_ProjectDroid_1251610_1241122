@@ -2,7 +2,6 @@ package com.example.albumsnap.external;
 
 import com.example.albumsnap.dto.AlbumDTO;
 import com.example.albumsnap.model.Album;
-import com.example.albumsnap.model.RecognitionResult;
 import com.example.albumsnap.repository.AlbumRepository;
 import com.example.albumsnap.services.AlbumSearchService;
 
@@ -25,12 +24,6 @@ public class SpotifyAlbumSearchService implements AlbumSearchService {
     public SpotifyAlbumSearchService(SpotifyApiClient client, AlbumRepository repository) {
         this.client = client;
         this.repository = repository;
-    }
-
-    @Override
-    public List<Album> searchAlbums(RecognitionResult result) throws IOException {
-        if (result == null) return new ArrayList<>();
-        return searchAlbums(result.getQuery());
     }
 
     @Override

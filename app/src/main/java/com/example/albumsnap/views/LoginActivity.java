@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.albumsnap.R;
 import com.example.albumsnap.external.SpotifyAuthManager;
+import com.example.albumsnap.util.ErrorMessages;
 import com.example.albumsnap.util.EdgeInsets;
 
 /** LoginView do diagrama de classes. */
@@ -53,7 +54,7 @@ public class LoginActivity extends AppCompatActivity {
             startActivity(new Intent(this, MainMenuActivity.class));
             finish();
         } else {
-            Toast.makeText(this, "Nao ligado ao Spotify", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.login_not_connected, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -69,7 +70,8 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
-                Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+                Toast.makeText(LoginActivity.this, ErrorMessages.localize(LoginActivity.this, message),
+                        Toast.LENGTH_LONG).show();
             }
         });
         if (handled) {

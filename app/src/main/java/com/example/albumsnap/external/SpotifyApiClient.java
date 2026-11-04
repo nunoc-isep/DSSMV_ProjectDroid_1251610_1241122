@@ -1,6 +1,9 @@
 package com.example.albumsnap.external;
 
+import android.util.Log;
+
 import com.example.albumsnap.services.SpotifyAuthService;
+import com.example.albumsnap.util.ErrorMessages;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,7 +51,7 @@ public class SpotifyApiClient {
         try {
             return new JSONObject(text);
         } catch (JSONException e) {
-            throw new IOException("Unexpected response from Spotify.", e);
+            throw new IOException(ErrorMessages.UNEXPECTED_RESPONSE, e);
         }
     }
 
@@ -88,32 +91,26 @@ public class SpotifyApiClient {
             if (status >= 200 && status < 300) {
                 return text;
             }
-            throw new ApiException(status, messageFor(status, text));
+            Log.w("SpotifyApiClient", method + " " + pathAndQuery + " -> " + status + " " + text);
+            throw new ApiException(status, messageFor(status));
         } finally {
             conn.disconnect();
         }
     }
 
-    private static String messageFor(int status, String body) {
+    /** Codigo da mensagem (traduzida na UI com ErrorMessages.localize); o corpo do erro vai para o Logcat. */
+    private static String messageFor(int status) {
         switch (status) {
             case 401:
-                return "Your Spotify session expired. Log out in Settings and log in again.";
+                return ErrorMessages.SESSION_EXPIRED;
             case 403:
-                return "Spotify refused the request. Check that this account was added to the app "
-                        + "in the Spotify Dashboard and that the permissions were granted.";
+                return ErrorMessages.SPOTIFY_FORBIDDEN;
             case 404:
-                return "Not found on Spotify.";
+                return ErrorMessages.SPOTIFY_NOT_FOUND;
             case 429:
-                return "Too many requests to Spotify. Try again in a moment.";
+                return ErrorMessages.SPOTIFY_RATE_LIMIT;
             default:
-                String detail = "";
-                try {
-                    JSONObject error = new JSONObject(body).optJSONObject("error");
-                    if (error != null) detail = ": " + error.optString("message", "");
-                } catch (JSONException ignored) {
-                    // corpo sem JSON
-                }
-                return "Spotify error " + status + detail;
+                return ErrorMessages.spotifyHttp(status);
         }
     }
 

@@ -5,6 +5,9 @@
     <string name="login_title">AlbumSnap</string>
     <string name="login_tagline">Snap an album cover, discover the album</string>
     <string name="login_button">Log in with Spotify</string>
+    <string name="login_not_connected">Not connected to Spotify</string>
+    <string name="login_error_cancelled">Login cancelled or denied.</string>
+    <string name="login_error_invalid">Invalid login response. Please try again.</string>
 
     <!-- Main menu -->
     <string name="menu_library_cd">Library</string>
@@ -17,6 +20,21 @@
 
     <!-- Common -->
     <string name="back_cd">Back</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Errors -->
+    <string name="error_network">Could not reach the server. Check your internet connection.</string>
+    <string name="error_no_session">No active session. Please log in again.</string>
+    <string name="error_album_not_found">Album not found on Spotify.</string>
+    <string name="error_spotify_search">Spotify search error: %1$s</string>
+    <string name="error_no_text">Could not read text or recognize the album cover.</string>
+    <string name="error_analyze_image">Error analyzing image: %1$s</string>
+    <string name="error_unexpected_response">Unexpected response from Spotify.</string>
+    <string name="error_session_expired">Your Spotify session expired. Log out in Settings and log in again.</string>
+    <string name="error_spotify_forbidden">Spotify refused the request. Check that this account was added to the app in the Spotify Dashboard and that the permissions were granted.</string>
+    <string name="error_spotify_not_found">Not found on Spotify.</string>
+    <string name="error_spotify_rate_limit">Too many requests to Spotify. Try again in a moment.</string>
+    <string name="error_spotify_http">Spotify error %1$d</string>
 
     <!-- Album -->
     <string name="album_cover_cd">Album cover</string>
@@ -47,6 +65,12 @@
 
     <!-- Camera -->
     <string name="camera_title">Camera</string>
+    <string name="camera_analyzing">Analyzing album cover…</string>
+    <string name="camera_choose_album">Choose the correct album:</string>
+    <string name="camera_error_load_image">Error loading captured image.</string>
+    <string name="camera_permission_denied">Camera permission denied.</string>
+    <string name="camera_error_temp_file">Error creating temporary file.</string>
+    <string name="camera_app_not_found">Camera application not found.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

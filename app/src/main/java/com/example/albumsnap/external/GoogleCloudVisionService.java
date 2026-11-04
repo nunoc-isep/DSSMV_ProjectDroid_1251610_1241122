@@ -59,7 +59,7 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                         String result = response.body().string();
                         callback.onSuccess(result);
                     } else {
-                        callback.onError(new Exception("Erro na API: " + response.code()));
+                        callback.onError(new Exception("Vision API HTTP " + response.code()));
                     }
                 }
             } catch (Exception e) {
