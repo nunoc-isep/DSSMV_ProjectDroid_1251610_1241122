@@ -1,50 +1,67 @@
-
 @startuml AlbumSnapDomainModel
 
 title AlbumSnap - Domain Model
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
-skinparam linetype ortho
-skinparam packageStyle folder
+skinparam packageStyle rectangle
+skinparam classBackgroundColor #FDFDFD
+skinparam classBorderColor #444444
+skinparam ArrowColor #444444
 
+' =========================
+' USER AND ACCOUNT
+' =========================
 class User {
-  - id: String
-  - name: String
 }
 
-class AlbumRecognition {
-  - id: String
-  - recognizedAt: LocalDateTime
-  - status: RecognitionStatus
+class SpotifyAccount {
+  - spotifyUserId: String
+  - accessToken: String
+  - refreshToken: String
+  - tokenExpiresAt: DateTime
 }
 
-enum RecognitionStatus {
-  PENDING
-  PROCESSING
-  SUCCESS
-  FAILED
+class AppSettings {
+  - theme: ThemeMode
+  - language: Language
 }
 
-class AlbumCoverImage {
-  - id: String
+enum ThemeMode {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum Language {
+  SYSTEM
+  ENGLISH
+  PORTUGUESE
+}
+
+' =========================
+' SCANNING
+' =========================
+class AlbumScan {
+  - scannedAt: DateTime
+  - detectedText: String
+}
+
+class AlbumCoverPhoto {
+  - capturedAt: DateTime
   - imageUri: String
-  - capturedAt: LocalDateTime
-  - width: int
-  - height: int
 }
 
-class RecognitionResult {
-  - confidence: float
-  - matchedAt: LocalDateTime
-}
-
+' =========================
+' CATALOGUE
+' =========================
 class Album {
   - spotifyId: String
   - title: String
   - releaseDate: String
   - totalTracks: int
   - albumType: String
+  - coverUrl: String
 }
 
 class Artist {
@@ -59,55 +76,59 @@ class Track {
   - trackNumber: int
 }
 
-class SpotifyAccount {
-  - spotifyUserId: String
-  - displayName: String
-  - connectedAt: LocalDateTime
+class TrackPreview {
+  - audioUrl: String
+  - lengthSeconds: int = 30
 }
 
-class Playlist {
-  - spotifyId: String
-  - name: String
-  - description: String
-  - trackCount: int
-  - isCollaborative: boolean
+' =========================
+' PERSONAL COLLECTION
+' =========================
+class Library {
 }
 
-class PlaylistSaveOperation {
-  - id: String
-  - requestedAt: LocalDateTime
-  - status: SaveStatus
-  - tracksRequested: int
-  - tracksSaved: int
+class LibraryEntry {
+  - savedAt: DateTime
 }
 
-enum SaveStatus {
-  PENDING
-  IN_PROGRESS
-  SUCCESS
-  PARTIAL_SUCCESS
-  FAILED
-}
-
-User "1" -- "0..*" AlbumRecognition : performs
-AlbumRecognition "1" *-- "1" AlbumCoverImage : uses
-AlbumRecognition "1" *-- "0..1" RecognitionResult : produces
-AlbumRecognition --> RecognitionStatus : status
-
-RecognitionResult "0..*" --> "0..*" Album : identifies candidates
-
-Album "0..*" -- "1..*" Artist : credited artists
-Album "1" *-- "0..*" Track : contains
-
+' =========================
+' RELATIONSHIPS
+' =========================
 User "1" -- "0..1" SpotifyAccount : connects
-SpotifyAccount "1" -- "0..*" Playlist : owns or can access
+User "1" -- "1" AppSettings : configures
+AppSettings --> ThemeMode
+AppSettings --> Language
 
-Playlist "0..*" -- "0..*" Track : contains
+User "1" -- "0..*" AlbumScan : performs
+AlbumScan "1" *-- "1" AlbumCoverPhoto : captures
+AlbumScan "0..*" --> "0..*" Album : candidates found
+AlbumScan "0..*" --> "0..1" Album : chosen album
 
-User "1" -- "0..*" PlaylistSaveOperation : requests
-PlaylistSaveOperation "0..*" --> "1" SpotifyAccount : uses account
-PlaylistSaveOperation "0..*" --> "1" Playlist : target playlist
-PlaylistSaveOperation "0..*" --> "1" Album : source album
-PlaylistSaveOperation --> SaveStatus : status
+Album "0..*" -- "1..*" Artist : credited to
+Album "1" *-- "0..*" Track : contains
+Track "1" -- "0..1" TrackPreview : has
+
+User "1" -- "1" Library : owns
+Library "1" *-- "0..*" LibraryEntry : stores
+LibraryEntry "0..*" --> "1" Album : refers to
+
+SpotifyAccount "0..*" -- "0..*" Album : favourites
+
+note bottom of AlbumScan
+  The 10 most recent scans (with a chosen album)
+  form the "Recent" list on the main menu.
+end note
+
+note bottom of TrackPreview
+  Comes from Deezer, not Spotify,
+  because Spotify no longer returns
+  preview_url to new apps.
+end note
+
+note right of Library
+  The Library is local to the app
+  (SQLite) and independent from the
+  Spotify favourites.
+end note
 
 @enduml

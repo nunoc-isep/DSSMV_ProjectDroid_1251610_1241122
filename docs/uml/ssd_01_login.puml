@@ -1,0 +1,32 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: opens the app
+alt not authenticated
+  System --> User: shows the login screen
+
+  User -> System: asks to connect with Spotify
+  System --> User: opens the Spotify authorization page
+
+  User -> Spotify: logs in and grants access
+  Spotify --> System: redirects back to the app with an authorization code
+
+  System -> Spotify: exchanges the code for access tokens
+  Spotify --> System: returns access and refresh tokens
+  alt login accepted
+    System --> User: shows the main menu
+  else cancelled, invalid redirect or token error
+    System --> User: informs the login failed
+  end
+else already authenticated
+  System --> User: shows the main menu
+end
+
+@enduml

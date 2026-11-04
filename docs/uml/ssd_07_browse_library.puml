@@ -1,0 +1,23 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System: asks to open the Library
+System --> User: shows the saved albums (most recent first)\nor informs that the Library is empty
+
+opt user selects an album
+  User -> System: selects an album
+  System --> User: shows the album details
+end
+
+note right of System
+  The list is reloaded every time the screen is
+  shown, so changes made elsewhere are reflected.
+end note
+
+@enduml

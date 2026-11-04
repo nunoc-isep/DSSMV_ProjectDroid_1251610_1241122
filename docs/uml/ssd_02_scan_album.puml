@@ -1,0 +1,52 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Google Cloud\nVision" as Vision
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: asks to scan an album cover
+opt camera permission not yet granted
+  System --> User: requests camera permission
+  User -> System: grants or denies permission
+end
+alt permission denied
+  System --> User: informs that camera permission is denied
+else permission granted
+  System --> User: opens the camera
+
+  User -> System: takes a photo of the cover
+  alt photo cancelled or unreadable
+    System --> User: returns to the main menu
+  else photo ok
+    System -> Vision: sends the photo for analysis
+    Vision --> System: returns the detected text
+    alt nothing usable detected
+      System --> User: informs that no text was found
+    else text detected
+      System -> Spotify: searches albums with the detected text
+      Spotify --> System: returns up to 10 albums
+      alt no albums found
+        System --> User: informs that the album was not found
+      else best result matches the text
+        System --> User: shows the album details
+      else several candidates
+        System --> User: shows the list of candidate albums
+
+        User -> System: chooses an album
+        System --> User: shows the album details
+      end
+    end
+  end
+end
+
+note right of System
+  Network or API failures show an error
+  message and return to the previous screen.
+end note
+
+@enduml

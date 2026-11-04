@@ -1,0 +1,27 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: asks to view an album
+System -> Spotify: requests the album with its artists and tracks
+Spotify --> System: returns the album data
+alt album loaded
+  System --> User: shows cover, title, artists, year, track count, type and tracks\nand the Save to Library / Remove from Library button
+else error (network, expired session, not found, rate limit)
+  System --> User: informs the error
+end
+
+note right of System
+  If opened from a scan, the album is also
+  added to the Recent list.
+  The Library button depends on whether the
+  album is already saved.
+end note
+
+@enduml

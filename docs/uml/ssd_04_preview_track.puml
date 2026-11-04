@@ -1,0 +1,42 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Deezer" as Deezer
+
+activate User
+
+User -> System: asks to play the preview of a track
+alt preview already known for this track
+  System --> User: plays the preview
+else not known yet
+  System -> Deezer: searches the preview by artist and track title
+  Deezer --> System: returns the preview URL (or none)
+  opt none found
+    System -> Deezer: searches the album previews by artist and album title
+    Deezer --> System: returns the previews by track title
+  end
+  alt preview available
+    System --> User: plays the preview and shows the pause button
+  else not available
+    System --> User: informs that the preview is unavailable
+  else error
+    System --> User: informs that the preview failed
+  end
+end
+
+User -> System: asks to pause the preview
+System --> User: pauses the preview
+
+User -> System: asks to resume the preview
+System --> User: resumes the preview
+
+note right of System
+  Only one track plays at a time (30 s).
+  The preview stops when it ends or when
+  the app goes to the background.
+end note
+
+@enduml
