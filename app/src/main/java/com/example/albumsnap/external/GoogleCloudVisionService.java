@@ -6,6 +6,8 @@ import android.util.Log;
 
 import com.example.albumsnap.BuildConfig;
 import com.example.albumsnap.services.ImageRecognitionService;
+import com.example.albumsnap.dto.VisionResponseDTO;
+import com.google.gson.Gson;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -115,52 +117,62 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     }
 
     public static String parseDetectedText(String jsonResponse) {
-        try {
-            JSONObject root = new JSONObject(jsonResponse);
-            JSONArray responses = root.optJSONArray("responses");
-            if (responses == null || responses.length() == 0) return "";
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
+            return "";
+        }
 
-            JSONObject firstResponse = responses.getJSONObject(0);
+        try {
+            Gson gson = new Gson();
+            VisionResponseDTO dto = gson.fromJson(jsonResponse, VisionResponseDTO.class);
+
+            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) {
+                return "";
+            }
+
+            VisionResponseDTO.AnnotateImageResponse firstResponse = dto.getResponses().get(0);
 
             // 1. Tentar OCR primeiro (Texto impresso na capa)
-            JSONObject fullTextAnnotation = firstResponse.optJSONObject("fullTextAnnotation");
-            if (fullTextAnnotation != null) {
-                String text = fullTextAnnotation.optString("text", "").replace("\n", " ").trim();
-                if (!text.isEmpty()) {
-                    return text;
+            if (firstResponse.getFullTextAnnotation() != null) {
+                String text = firstResponse.getFullTextAnnotation().getText();
+                if (text != null) {
+                    text = text.replace("\n", " ").trim();
+                    if (!text.isEmpty()) {
+                        return text;
+                    }
                 }
             }
 
             // 2. Se não houver texto, analisar a WEB_DETECTION
-            JSONObject webDetection = firstResponse.optJSONObject("webDetection");
-            if (webDetection != null) {
+            if (firstResponse.getWebDetection() != null) {
+                VisionResponseDTO.WebDetection webDetection = firstResponse.getWebDetection();
 
-                JSONArray webEntities = webDetection.optJSONArray("webEntities");
-                if (webEntities != null && webEntities.length() > 0) {
-                    for (int i = 0; i < webEntities.length(); i++) {
-                        JSONObject entity = webEntities.getJSONObject(i);
-                        String description = entity.optString("description", "").trim();
-                        float score = (float) entity.optDouble("score", 0.0);
+                // Analisar webEntities
+                if (webDetection.getWebEntities() != null) {
+                    for (VisionResponseDTO.WebEntity entity : webDetection.getWebEntities()) {
+                        String description = entity.getDescription() != null ? entity.getDescription().trim() : "";
+                        float score = entity.getScore();
 
-                        // Condição direta sem negação
                         if (!description.isEmpty() && isSpecificLabel(description) && score > 0.3) {
                             return description;
                         }
                     }
                 }
 
-                JSONArray bestGuessLabels = webDetection.optJSONArray("bestGuessLabels");
-                if (bestGuessLabels != null && bestGuessLabels.length() > 0) {
-                    String bestGuess = bestGuessLabels.getJSONObject(0).optString("label", "").trim();
-                    // Condição direta sem negação
-                    if (!bestGuess.isEmpty() && isSpecificLabel(bestGuess)) {
-                        return bestGuess;
+                // Analisar bestGuessLabels
+                if (webDetection.getBestGuessLabels() != null && !webDetection.getBestGuessLabels().isEmpty()) {
+                    String bestGuess = webDetection.getBestGuessLabels().get(0).getLabel();
+                    if (bestGuess != null) {
+                        bestGuess = bestGuess.trim();
+                        if (!bestGuess.isEmpty() && isSpecificLabel(bestGuess)) {
+                            return bestGuess;
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Erro ao analisar o JSON de resposta da Cloud Vision", e);
+            Log.e(TAG, "Erro ao analisar o DTO da resposta da Cloud Vision", e);
         }
+
         return "";
     }
 

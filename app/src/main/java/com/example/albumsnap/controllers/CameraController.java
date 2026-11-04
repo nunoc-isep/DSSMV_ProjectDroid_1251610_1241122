@@ -28,11 +28,8 @@ public class CameraController {
     private final ImageRecognitionService imageRecognitionService;
 
     public interface CameraCallback {
+        void onStatusUpdate(@StringRes int statusRes);
         void onAlbumsRecognized(List<Album> albums);
-        /**
-         * @param messageRes texto em strings.xml (traduzido pela Activity, que segue o idioma escolhido)
-         * @param detail     pormenor a juntar ao texto (%1$s), ou null
-         */
         void onError(@StringRes int messageRes, String detail);
     }
 
@@ -47,35 +44,33 @@ public class CameraController {
     }
 
     public void processCapturedImage(Bitmap photo, CameraCallback callback) {
+        // Notifica etapa 1: Análise visual (Google Vision)
+        callback.onStatusUpdate(R.string.status_analyzing_vision);
+
         imageRecognitionService.analyzeImage(photo, new ImageRecognitionService.VisionCallback() {
             @Override
             public void onSuccess(String jsonResult) {
                 String searchQuery = GoogleCloudVisionService.parseDetectedText(jsonResult);
 
                 if (searchQuery != null && !searchQuery.isEmpty()) {
+                    // Notifica etapa 2: Pesquisa no Spotify
+                    callback.onStatusUpdate(R.string.status_searching_spotify);
+
                     new Thread(() -> {
                         try {
-                            // Obtém diretamente a lista de modelos de domínio (Album)
                             List<Album> results = albumSearchService.searchAlbums(searchQuery);
 
                             if (results != null && !results.isEmpty()) {
-
-                                // REGRA DE DECISÃO:
-                                // Se o primeiro resultado for quase idêntico à pesquisa, envia apenas esse (Abre Direto).
-                                // Se a pesquisa for abrangente, envia a lista completa (Mostra o Menu de Escolha).
                                 String topTitle = results.get(0).getTitle().toLowerCase();
                                 String queryLower = searchQuery.toLowerCase();
 
                                 if (topTitle.contains(queryLower) || queryLower.contains(topTitle)) {
-                                    // Correspondência forte: envia apenas o 1º elemento
                                     List<Album> singleResult = new ArrayList<>();
                                     singleResult.add(results.get(0));
                                     callback.onAlbumsRecognized(singleResult);
                                 } else {
-                                    // Correspondência incerta: envia todos para o menu de escolha
                                     callback.onAlbumsRecognized(results);
                                 }
-
                             } else {
                                 callback.onError(R.string.error_album_not_found, null);
                             }

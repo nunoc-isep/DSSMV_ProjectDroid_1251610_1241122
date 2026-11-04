@@ -11,12 +11,15 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -25,6 +28,8 @@ import com.example.albumsnap.R;
 import com.example.albumsnap.controllers.CameraController;
 import com.example.albumsnap.model.Album;
 import com.example.albumsnap.util.ErrorMessages;
+import com.example.albumsnap.views.adapters.AlbumAdapter;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,14 +38,19 @@ import java.util.List;
 public class CameraActivity extends AppCompatActivity {
 
     private static final String TAG = "CameraActivity";
+    private static final String KEY_PHOTO_URI = "photo_uri";
+    private static final String KEY_CAMERA_OPENED = "is_camera_opened";
 
     private CameraController cameraController;
     private Uri photoUri;
     private boolean isCameraOpened = false;
 
-    private final ActivityResultLauncher<Intent> takePictureLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK && photoUri != null) {
+    private View layoutLoading;
+    private TextView txtStatus;
+
+    private final ActivityResultLauncher<Uri> takePictureLauncher =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+                if (success && photoUri != null) {
                     try {
                         Bitmap fullBitmap = loadBitmapFromUri(photoUri);
                         if (fullBitmap != null) {
@@ -71,8 +81,10 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_camera);
+
+        layoutLoading = findViewById(R.id.layoutLoading);
+        txtStatus = findViewById(R.id.txtStatus);
 
         ImageButton btnBack = findViewById(R.id.btnBack);
         if (btnBack != null) {
@@ -81,10 +93,22 @@ public class CameraActivity extends AppCompatActivity {
 
         cameraController = new CameraController(this);
 
-        if (savedInstanceState == null && !isCameraOpened) {
+        if (savedInstanceState != null) {
+            photoUri = savedInstanceState.getParcelable(KEY_PHOTO_URI);
+            isCameraOpened = savedInstanceState.getBoolean(KEY_CAMERA_OPENED, false);
+        }
+
+        if (!isCameraOpened) {
             isCameraOpened = true;
             checkPermissionAndOpenCamera();
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(KEY_PHOTO_URI, photoUri);
+        outState.putBoolean(KEY_CAMERA_OPENED, isCameraOpened);
     }
 
     private void checkPermissionAndOpenCamera() {
@@ -96,38 +120,27 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void openCamera() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            try {
-                File photoFile = File.createTempFile(
-                        "album_cover_",
-                        ".jpg",
-                        getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-                );
+        try {
+            File photoFile = File.createTempFile(
+                    "album_cover_",
+                    ".jpg",
+                    getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            );
 
-                photoUri = FileProvider.getUriForFile(
-                        this,
-                        getPackageName() + ".provider",
-                        photoFile
-                );
+            photoUri = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".provider",
+                    photoFile
+            );
 
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-                takePictureLauncher.launch(takePictureIntent);
-            } catch (IOException e) {
-                Log.e(TAG, "Error creating temporary file for camera", e);
-                Toast.makeText(this, R.string.camera_error_temp_file, Toast.LENGTH_SHORT).show();
-                finish();
-            }
-        } else {
-            Toast.makeText(this, R.string.camera_app_not_found, Toast.LENGTH_SHORT).show();
+            takePictureLauncher.launch(photoUri);
+        } catch (IOException e) {
+            Log.e(TAG, "Error creating temporary file for camera", e);
+            Toast.makeText(this, R.string.camera_error_temp_file, Toast.LENGTH_SHORT).show();
             finish();
         }
     }
 
-    /**
-     * Carrega o Bitmap de forma compatível com todas as versões do Android,
-     * evitando o uso do método descontinuado get() do MediaStore.
-     */
     @SuppressWarnings("deprecation")
     private Bitmap loadBitmapFromUri(Uri uri) throws IOException {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -139,16 +152,22 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void processImage(Bitmap bitmap) {
-        Toast.makeText(this, R.string.camera_analyzing, Toast.LENGTH_SHORT).show();
+        layoutLoading.setVisibility(View.VISIBLE);
 
         cameraController.processCapturedImage(bitmap, new CameraController.CameraCallback() {
             @Override
+            public void onStatusUpdate(int statusRes) {
+                runOnUiThread(() -> txtStatus.setText(statusRes));
+            }
+
+            @Override
             public void onAlbumsRecognized(List<Album> albums) {
                 runOnUiThread(() -> {
+                    layoutLoading.setVisibility(View.GONE);
                     if (albums.size() == 1) {
                         openAlbumDetails(albums.get(0));
                     } else {
-                        showAlbumSelectionDialog(albums);
+                        showAlbumBottomSheet(albums);
                     }
                 });
             }
@@ -156,6 +175,7 @@ public class CameraActivity extends AppCompatActivity {
             @Override
             public void onError(int messageRes, String detail) {
                 runOnUiThread(() -> {
+                    layoutLoading.setVisibility(View.GONE);
                     String message = getString(messageRes, ErrorMessages.localize(CameraActivity.this, detail));
                     Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();
                     finish();
@@ -164,21 +184,36 @@ public class CameraActivity extends AppCompatActivity {
         });
     }
 
-    private void showAlbumSelectionDialog(List<Album> albums) {
-        String[] titles = new String[albums.size()];
-        for (int i = 0; i < albums.size(); i++) {
-            titles[i] = albums.get(i).getTitle();
-        }
+    /** Exibe um BottomSheet estilizado que permite rolagem interna sem fechar acidentalmente */
+    private void showAlbumBottomSheet(List<Album> albums) {
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_album_selection, null);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(R.string.camera_choose_album);
-        builder.setItems(titles, (dialog, which) -> {
-            Album selectedAlbum = albums.get(which);
-            openAlbumDetails(selectedAlbum);
+        ListView listView = dialogView.findViewById(R.id.listAlbums);
+        TextView txtTitle = dialogView.findViewById(R.id.txtDialogTitle);
+        txtTitle.setText(R.string.camera_choose_album);
+
+        // Ativa a rolagem aninhada programaticamente para garantir compatibilidade
+        listView.setNestedScrollingEnabled(true);
+
+        AlbumAdapter albumAdapter = new AlbumAdapter(this, album -> {
+            bottomSheet.dismiss();
+            openAlbumDetails(album);
         });
-        builder.setOnCancelListener(dialog -> finish());
-        builder.setNegativeButton(R.string.action_cancel, (dialog, which) -> finish());
-        builder.show();
+
+        albumAdapter.setItems(albums);
+        listView.setAdapter(albumAdapter);
+
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            bottomSheet.dismiss();
+            openAlbumDetails(albums.get(position));
+        });
+
+        // Executa o finish() apenas se o utilizador cancelar intencionalmente o diálogo
+        bottomSheet.setOnCancelListener(dialog -> finish());
+
+        bottomSheet.setContentView(dialogView);
+        bottomSheet.show();
     }
 
     private void openAlbumDetails(Album album) {

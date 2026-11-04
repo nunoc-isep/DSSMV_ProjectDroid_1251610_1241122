@@ -71,6 +71,8 @@
     <string name="camera_permission_denied">Camera permission denied.</string>
     <string name="camera_error_temp_file">Error creating temporary file.</string>
     <string name="camera_app_not_found">Camera application not found.</string>
+    <string name="status_analyzing_vision">Analysing album cover with Cloud Vision API…</string>
+    <string name="status_searching_spotify">Searching for corresponding albums in Spotify…</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

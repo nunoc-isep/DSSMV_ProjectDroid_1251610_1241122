@@ -72,6 +72,8 @@
     <string name="camera_permission_denied">Permissão da câmara recusada.</string>
     <string name="camera_error_temp_file">Erro ao criar o ficheiro temporário.</string>
     <string name="camera_app_not_found">Aplicação de câmara não encontrada.</string>
+    <string name="status_analyzing_vision">A analisar a capa com a Cloud Vision API…</string>
+    <string name="status_searching_spotify">A procurar álbuns correspondentes no Spotify…</string>
 
     <!-- Definições -->
     <string name="settings_title">Definições</string>
