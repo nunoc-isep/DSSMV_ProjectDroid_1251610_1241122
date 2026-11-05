@@ -15,19 +15,9 @@
             android:orientation="horizontal"
             android:padding="16dp">
 
-        <ImageButton
-                android:id="@+id/btnBack"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/back_cd"
-                android:src="@drawable/ic_arrow_back"
-                app:tint="?attr/colorOnSurface" />
-
         <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:text="@string/camera_title"
                 android:textAppearance="?attr/textAppearanceHeadlineSmall"
                 android:textStyle="bold" />

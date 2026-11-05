@@ -1,12 +1,14 @@
 package com.example.albumsnap.external;
 
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.util.Base64;
 import android.util.Log;
 
 import com.example.albumsnap.BuildConfig;
 import com.example.albumsnap.services.ImageRecognitionService;
 import com.example.albumsnap.dto.VisionResponseDTO;
+import com.example.albumsnap.util.SearchQuery;
 import com.google.gson.Gson;
 
 import org.json.JSONArray;
@@ -14,6 +16,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -27,18 +35,28 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     private static final String API_KEY = BuildConfig.VISION_API_KEY;
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate?key=" + API_KEY;
 
+    // Lado maior da imagem enviada (so se reduz, nunca se amplia) e parte central usada
+    private static final int MAX_SIDE_PX = 1280;
+    private static final float CROP_RATIO = 0.80f;
+
+    // Limites das pesquisas geradas a partir da resposta do Vision
+    private static final int OCR_MAX_WORDS = 8;
+    private static final int OCR_HEAD_WORDS = 4;
+    private static final int MAX_ENTITIES = 2;
+    private static final int MAX_PAGE_TITLES = 2;
+    private static final int MAX_SPOTIFY_IDS = 2;
+    private static final float MIN_ENTITY_SCORE = 0.3f;
+
     @Override
     public void analyzeImage(Bitmap bitmap, VisionCallback callback) {
         new Thread(() -> {
             try {
-                // 1. Recortar a área central (80%) para remover ruído de fundo
-                Bitmap croppedBitmap = cropCenter(bitmap);
-
-                // 2. Redimensionar para tamanho ideal para a Cloud Vision API
-                Bitmap resizedBitmap = Bitmap.createScaledBitmap(croppedBitmap, 800, 800, true);
+                // 1+2. Recortar a área central (80%) e reduzir mantendo a proporção
+                Bitmap resizedBitmap = prepareForUpload(bitmap);
 
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 85, byteArrayOutputStream);
+                resizedBitmap.recycle();   // e uma copia nossa; o bitmap original pertence a quem o enviou
                 byte[] imageBytes = byteArrayOutputStream.toByteArray();
                 String base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP);
 
@@ -93,7 +111,7 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
         // Deteção Web (Pesquisa Visual)
         JSONObject webFeature = new JSONObject();
         webFeature.put("type", "WEB_DETECTION");
-        webFeature.put("maxResults", 10);
+        webFeature.put("maxResults", 20);   // mais paginas = mais hipoteses de achar o link do Spotify
         featuresArray.put(webFeature);
 
         requestItem.put("features", featuresArray);
@@ -103,90 +121,227 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
         return requestBodyJson;
     }
 
-    private Bitmap cropCenter(Bitmap src) {
-        if (src == null) return null;
+    /**
+     * Recorta a parte central da imagem e reduz-a (sem a deformar nem ampliar) para o lado
+     * maior ter no maximo MAX_SIDE_PX. A reducao faz-se ja ao copiar a regiao recortada,
+     * por isso nunca existe uma copia intermedia do tamanho original.
+     */
+    private Bitmap prepareForUpload(Bitmap src) {
+        if (src == null) throw new IllegalArgumentException("bitmap is null");
         int width = src.getWidth();
         int height = src.getHeight();
 
-        int cropWidth = (int) (width * 0.80);
-        int cropHeight = (int) (height * 0.80);
+        int cropWidth = Math.max(1, (int) (width * CROP_RATIO));
+        int cropHeight = Math.max(1, (int) (height * CROP_RATIO));
         int startX = (width - cropWidth) / 2;
         int startY = (height - cropHeight) / 2;
 
-        return Bitmap.createBitmap(src, startX, startY, cropWidth, cropHeight);
+        float scale = Math.min(1f, (float) MAX_SIDE_PX / Math.max(cropWidth, cropHeight));
+        Matrix matrix = new Matrix();
+        matrix.postScale(scale, scale);
+
+        return Bitmap.createBitmap(src, startX, startY, cropWidth, cropHeight, matrix, true);
     }
 
-    public static String parseDetectedText(String jsonResponse) {
+    /**
+     * Pesquisas candidatas para o Spotify, da mais para a menos fiavel:
+     * 1. melhor palpite web do Google ("artista album ... album cover" sem o sufixo);
+     * 2. texto OCR da capa, limpo e limitado a poucas palavras;
+     * 3. titulos de paginas de sites de musica onde a capa aparece ("Album - Artista | Spotify");
+     * 4. entidades web com boa pontuacao (normalmente artista e/ou album);
+     * 5. so o inicio do texto OCR, quando este e longo (a capa costuma ter artista e titulo primeiro).
+     * Nunca devolve rotulos genericos ("Poster", "Font", ...), mas nomes como "Art Blakey" ou
+     * "Earth, Wind & Fire" passam.
+     */
+    public static List<String> parseSearchQueries(String jsonResponse) {
+        Set<String> queries = new LinkedHashSet<>();
         if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
-            return "";
+            return new ArrayList<>(queries);
         }
 
         try {
-            Gson gson = new Gson();
-            VisionResponseDTO dto = gson.fromJson(jsonResponse, VisionResponseDTO.class);
-
+            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
             if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) {
-                return "";
+                return new ArrayList<>(queries);
+            }
+            VisionResponseDTO.AnnotateImageResponse response = dto.getResponses().get(0);
+            VisionResponseDTO.WebDetection web = response.getWebDetection();
+
+            // 1. Melhor palpite do Google
+            if (web != null && web.getBestGuessLabels() != null && !web.getBestGuessLabels().isEmpty()) {
+                addIfUseful(queries, web.getBestGuessLabels().get(0).getLabel());
             }
 
-            VisionResponseDTO.AnnotateImageResponse firstResponse = dto.getResponses().get(0);
+            // 2. OCR (ignora o ruido que o OCR le em capas sem texto)
+            String ocr = "";
+            if (response.getFullTextAnnotation() != null) {
+                ocr = SearchQuery.firstWords(
+                        SearchQuery.clean(response.getFullTextAnnotation().getText()), OCR_MAX_WORDS);
+                if (SearchQuery.isMeaningfulText(ocr)) {
+                    addIfUseful(queries, ocr);
+                } else {
+                    ocr = "";
+                }
+            }
 
-            // 1. Tentar OCR primeiro (Texto impresso na capa)
-            if (firstResponse.getFullTextAnnotation() != null) {
-                String text = firstResponse.getFullTextAnnotation().getText();
-                if (text != null) {
-                    text = text.replace("\n", " ").trim();
-                    if (!text.isEmpty()) {
-                        return text;
+            // 3. Titulos das paginas (sites de musica) onde a capa aparece
+            if (web != null && web.getPagesWithMatchingImages() != null) {
+                int added = 0;
+                for (VisionResponseDTO.WebPage page : web.getPagesWithMatchingImages()) {
+                    if (added >= MAX_PAGE_TITLES) break;
+                    if (SearchQuery.isMusicSite(page.getUrl())
+                            && addIfUseful(queries, SearchQuery.fromPageTitle(page.getPageTitle()))) {
+                        added++;
                     }
                 }
             }
 
-            // 2. Se não houver texto, analisar a WEB_DETECTION
-            if (firstResponse.getWebDetection() != null) {
-                VisionResponseDTO.WebDetection webDetection = firstResponse.getWebDetection();
-
-                // Analisar webEntities
-                if (webDetection.getWebEntities() != null) {
-                    for (VisionResponseDTO.WebEntity entity : webDetection.getWebEntities()) {
-                        String description = entity.getDescription() != null ? entity.getDescription().trim() : "";
-                        float score = entity.getScore();
-
-                        if (!description.isEmpty() && isSpecificLabel(description) && score > 0.3) {
-                            return description;
-                        }
+            // 4. Entidades web
+            if (web != null && web.getWebEntities() != null) {
+                int added = 0;
+                for (VisionResponseDTO.WebEntity entity : web.getWebEntities()) {
+                    if (added >= MAX_ENTITIES) break;
+                    if (entity.getScore() > MIN_ENTITY_SCORE && addIfUseful(queries, entity.getDescription())) {
+                        added++;
                     }
                 }
+            }
 
-                // Analisar bestGuessLabels
-                if (webDetection.getBestGuessLabels() != null && !webDetection.getBestGuessLabels().isEmpty()) {
-                    String bestGuess = webDetection.getBestGuessLabels().get(0).getLabel();
-                    if (bestGuess != null) {
-                        bestGuess = bestGuess.trim();
-                        if (!bestGuess.isEmpty() && isSpecificLabel(bestGuess)) {
-                            return bestGuess;
-                        }
-                    }
-                }
+            // 5. Inicio do OCR
+            if (SearchQuery.wordCount(ocr) > OCR_HEAD_WORDS + 1) {
+                addIfUseful(queries, SearchQuery.firstWords(ocr, OCR_HEAD_WORDS));
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro ao analisar o DTO da resposta da Cloud Vision", e);
         }
 
-        return "";
+        return new ArrayList<>(queries);
     }
 
     /**
-     * Verifica se o rótulo é específico e relevante (não genérico).
+     * Ids de albuns do Spotify encontrados nos URLs das paginas onde a capa aparece
+     * (open.spotify.com/album/...). Os mais repetidos primeiro. Uma pagina de album do Spotify
+     * com esta imagem e quase de certeza o album certo, sem precisar de pesquisar por texto.
      */
-    private static boolean isSpecificLabel(String label) {
-        String lower = label.toLowerCase();
-        boolean isGeneric = lower.contains("art") || lower.contains("illustration") ||
-                lower.contains("poster") || lower.contains("album cover") ||
-                lower.contains("graphic design") || lower.contains("font") ||
-                lower.contains("picture") || lower.contains("image") ||
-                lower.contains("soundtrack") || lower.contains("compilation");
+    public static List<String> parseSpotifyAlbumIds(String jsonResponse) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) return new ArrayList<>();
 
-        return !isGeneric;
+        try {
+            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
+            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) {
+                return new ArrayList<>();
+            }
+            VisionResponseDTO.WebDetection web = dto.getResponses().get(0).getWebDetection();
+            if (web == null || web.getPagesWithMatchingImages() == null) return new ArrayList<>();
+
+            for (VisionResponseDTO.WebPage page : web.getPagesWithMatchingImages()) {
+                String id = SearchQuery.spotifyAlbumId(page.getUrl());
+                if (id != null) {
+                    Integer n = counts.get(id);
+                    counts.put(id, n == null ? 1 : n + 1);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao procurar links do Spotify na resposta da Cloud Vision", e);
+        }
+
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(counts.entrySet());
+        java.util.Collections.sort(entries, (a, b) -> b.getValue() - a.getValue());   // sort estavel
+        List<String> ids = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : entries) {
+            if (ids.size() >= MAX_SPOTIFY_IDS) break;
+            ids.add(e.getKey());
+        }
+        return ids;
+    }
+
+    /**
+     * Identificadores das imagens de capa do Spotify (i.scdn.co) que o Google encontrou iguais
+     * a foto. Se uma capa candidata tiver o mesmo identificador, e exatamente a mesma imagem.
+     * Funciona mesmo em capas sem texto.
+     */
+    public static Set<String> parseCoverKeys(String jsonResponse) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) return keys;
+
+        try {
+            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
+            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) return keys;
+            VisionResponseDTO.WebDetection web = dto.getResponses().get(0).getWebDetection();
+            if (web == null) return keys;
+
+            addCoverKeys(keys, web.getFullMatchingImages());
+            addCoverKeys(keys, web.getPartialMatchingImages());
+            if (web.getPagesWithMatchingImages() != null) {
+                for (VisionResponseDTO.WebPage page : web.getPagesWithMatchingImages()) {
+                    addCoverKeys(keys, page.getFullMatchingImages());
+                    addCoverKeys(keys, page.getPartialMatchingImages());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao procurar capas do Spotify na resposta da Cloud Vision", e);
+        }
+        return keys;
+    }
+
+    private static void addCoverKeys(Set<String> keys, List<VisionResponseDTO.WebImage> images) {
+        if (images == null) return;
+        for (VisionResponseDTO.WebImage image : images) {
+            String key = SearchQuery.spotifyCoverKey(image.getUrl());
+            if (key != null) keys.add(key);
+        }
+    }
+
+    /** Resumo curto da resposta (para o logcat): palpite, entidades, paginas e imagens iguais. */
+    public static String describeResponse(String jsonResponse) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
+            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) return "(vazia)";
+            VisionResponseDTO.AnnotateImageResponse r = dto.getResponses().get(0);
+
+            String ocr = r.getFullTextAnnotation() != null ? r.getFullTextAnnotation().getText() : null;
+            sb.append("ocr=").append(ocr == null ? "" : ocr.replace('\n', ' ').trim());
+
+            VisionResponseDTO.WebDetection web = r.getWebDetection();
+            if (web == null) return sb.append(" | sem webDetection").toString();
+
+            if (web.getBestGuessLabels() != null && !web.getBestGuessLabels().isEmpty()) {
+                sb.append(" | bestGuess=").append(web.getBestGuessLabels().get(0).getLabel());
+            }
+            if (web.getWebEntities() != null) {
+                sb.append(" | entities=");
+                int n = 0;
+                for (VisionResponseDTO.WebEntity e : web.getWebEntities()) {
+                    if (n++ >= 8) break;
+                    sb.append(e.getDescription()).append('(').append(e.getScore()).append(") ");
+                }
+            }
+            if (web.getPagesWithMatchingImages() != null) {
+                sb.append(" | pages=").append(web.getPagesWithMatchingImages().size()).append(": ");
+                int n = 0;
+                for (VisionResponseDTO.WebPage p : web.getPagesWithMatchingImages()) {
+                    if (n++ >= 5) break;
+                    sb.append(p.getPageTitle()).append(" <").append(p.getUrl()).append("> ");
+                }
+            }
+            sb.append(" | fullMatchingImages=")
+                    .append(web.getFullMatchingImages() == null ? 0 : web.getFullMatchingImages().size())
+                    .append(" partial=")
+                    .append(web.getPartialMatchingImages() == null ? 0 : web.getPartialMatchingImages().size());
+        } catch (Exception e) {
+            sb.append(" | erro a descrever: ").append(e.getMessage());
+        }
+        return sb.toString();
+    }
+
+    private static boolean addIfUseful(Set<String> queries, String raw) {
+        String cleaned = SearchQuery.clean(raw);
+        if (SearchQuery.isGeneric(cleaned)) return false;
+        for (String existing : queries) {
+            if (existing.equalsIgnoreCase(cleaned)) return false;
+        }
+        return queries.add(cleaned);
     }
 }

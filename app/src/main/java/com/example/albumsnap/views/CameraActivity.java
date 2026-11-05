@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -12,11 +14,11 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,26 +35,32 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 public class CameraActivity extends AppCompatActivity {
 
     private static final String TAG = "CameraActivity";
     private static final String KEY_PHOTO_URI = "photo_uri";
+    private static final String KEY_PHOTO_PATH = "photo_path";
+    private static final String PHOTO_PREFIX = "album_cover_";
     private static final String KEY_CAMERA_OPENED = "is_camera_opened";
 
     private CameraController cameraController;
     private Uri photoUri;
+    private File photoFile;   // ficheiro temporario da foto; apagado assim que a imagem e lida para memoria
     private boolean isCameraOpened = false;
 
     private View layoutLoading;
     private TextView txtStatus;
+    private BottomSheetDialog albumBottomSheet;
 
     private final ActivityResultLauncher<Uri> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (success && photoUri != null) {
                     try {
                         Bitmap fullBitmap = loadBitmapFromUri(photoUri);
+                        deleteTempPhoto();   // a imagem ja esta em memoria: o ficheiro nao serve para mais nada
                         if (fullBitmap != null) {
                             processImage(fullBitmap);
                         } else {
@@ -60,10 +68,12 @@ public class CameraActivity extends AppCompatActivity {
                         }
                     } catch (IOException e) {
                         Log.e(TAG, "Error loading captured image", e);
+                        deleteTempPhoto();
                         Toast.makeText(this, R.string.camera_error_load_image, Toast.LENGTH_SHORT).show();
                         finish();
                     }
                 } else {
+                    deleteTempPhoto();   // foto cancelada: apaga o ficheiro vazio
                     finish();
                 }
             });
@@ -86,15 +96,20 @@ public class CameraActivity extends AppCompatActivity {
         layoutLoading = findViewById(R.id.layoutLoading);
         txtStatus = findViewById(R.id.txtStatus);
 
-        ImageButton btnBack = findViewById(R.id.btnBack);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> finish());
-        }
+        // Unica forma de cancelar: botao "voltar" do Android (cancela a analise e fecha o ecra)
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                leaveScreen();
+            }
+        });
 
         cameraController = new CameraController(this);
 
         if (savedInstanceState != null) {
             photoUri = savedInstanceState.getParcelable(KEY_PHOTO_URI);
+            String path = savedInstanceState.getString(KEY_PHOTO_PATH);
+            if (path != null) photoFile = new File(path);
             isCameraOpened = savedInstanceState.getBoolean(KEY_CAMERA_OPENED, false);
         }
 
@@ -108,6 +123,7 @@ public class CameraActivity extends AppCompatActivity {
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putParcelable(KEY_PHOTO_URI, photoUri);
+        outState.putString(KEY_PHOTO_PATH, photoFile != null ? photoFile.getAbsolutePath() : null);
         outState.putBoolean(KEY_CAMERA_OPENED, isCameraOpened);
     }
 
@@ -121,11 +137,14 @@ public class CameraActivity extends AppCompatActivity {
 
     private void openCamera() {
         try {
-            File photoFile = File.createTempFile(
-                    "album_cover_",
-                    ".jpg",
-                    getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-            );
+            purgeOldPhotos();
+
+            // Pasta de cache da app (privada; o Android tambem a pode limpar sozinho)
+            File dir = new File(getCacheDir(), "images");
+            if (!dir.exists() && !dir.mkdirs()) {
+                throw new IOException("Cannot create " + dir);
+            }
+            photoFile = File.createTempFile(PHOTO_PREFIX, ".jpg", dir);
 
             photoUri = FileProvider.getUriForFile(
                     this,
@@ -141,14 +160,90 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
+    /** Apaga o ficheiro temporario da foto atual (se existir). */
+    private void deleteTempPhoto() {
+        if (photoFile != null) {
+            if (photoFile.exists() && !photoFile.delete()) {
+                Log.w(TAG, "Could not delete temp photo " + photoFile);
+            }
+            photoFile = null;
+        }
+        photoUri = null;
+    }
+
+    /** Remove fotos que tenham ficado para tras (crash, versoes anteriores da app). */
+    private void purgeOldPhotos() {
+        deleteMatching(new File(getCacheDir(), "images"));
+        deleteMatching(getExternalFilesDir(Environment.DIRECTORY_PICTURES));   // local usado antes
+    }
+
+    private void deleteMatching(File dir) {
+        File[] files = dir != null ? dir.listFiles() : null;
+        if (files == null) return;
+        for (File f : files) {
+            if (f.getName().startsWith(PHOTO_PREFIX) && !f.delete()) {
+                Log.w(TAG, "Could not delete old photo " + f);
+            }
+        }
+    }
+
     @SuppressWarnings("deprecation")
     private Bitmap loadBitmapFromUri(Uri uri) throws IOException {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             ImageDecoder.Source source = ImageDecoder.createSource(getContentResolver(), uri);
             return ImageDecoder.decodeBitmap(source);
         } else {
-            return MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+            // Em Android < 9 o Bitmap vem sem a rotacao EXIF aplicada: aplica-se aqui
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+            return applyExifRotation(bitmap, uri);
         }
+    }
+
+    /** Roda/espelha o bitmap conforme a orientacao EXIF do ficheiro (ImageDecoder ja o faz em Android 9+). */
+    private Bitmap applyExifRotation(Bitmap bitmap, Uri uri) {
+        if (bitmap == null) return null;
+        int orientation = ExifInterface.ORIENTATION_NORMAL;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in != null) {
+                orientation = new ExifInterface(in).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            }
+        } catch (IOException e) {
+            Log.w(TAG, "Could not read EXIF orientation", e);
+        }
+
+        Matrix m = new Matrix();
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:  m.postRotate(90); break;
+            case ExifInterface.ORIENTATION_ROTATE_180: m.postRotate(180); break;
+            case ExifInterface.ORIENTATION_ROTATE_270: m.postRotate(270); break;
+            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL: m.postScale(-1, 1); break;
+            case ExifInterface.ORIENTATION_FLIP_VERTICAL:   m.postScale(1, -1); break;
+            case ExifInterface.ORIENTATION_TRANSPOSE:  m.postRotate(90);  m.postScale(-1, 1); break;
+            case ExifInterface.ORIENTATION_TRANSVERSE: m.postRotate(270); m.postScale(-1, 1); break;
+            default: return bitmap;
+        }
+        Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
+        if (rotated != bitmap) bitmap.recycle();
+        return rotated;
+    }
+
+    private boolean isActivityAlive() {
+        return !isFinishing() && !isDestroyed();
+    }
+
+    /** Sai do ecra: cancela a analise em curso para que nenhum resultado chegue a uma Activity fechada. */
+    private void leaveScreen() {
+        cameraController.cancel();
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (cameraController != null) cameraController.cancel();
+        if (isFinishing()) deleteTempPhoto();   // rede de seguranca (nao apaga numa simples rotacao do ecra)
+        if (albumBottomSheet != null && albumBottomSheet.isShowing()) albumBottomSheet.dismiss();
     }
 
     private void processImage(Bitmap bitmap) {
@@ -157,24 +252,25 @@ public class CameraActivity extends AppCompatActivity {
         cameraController.processCapturedImage(bitmap, new CameraController.CameraCallback() {
             @Override
             public void onStatusUpdate(int statusRes) {
-                runOnUiThread(() -> txtStatus.setText(statusRes));
+                runOnUiThread(() -> {
+                    if (!isActivityAlive()) return;
+                    txtStatus.setText(statusRes);
+                });
             }
 
             @Override
             public void onAlbumsRecognized(List<Album> albums) {
                 runOnUiThread(() -> {
+                    if (!isActivityAlive()) return;
                     layoutLoading.setVisibility(View.GONE);
-                    if (albums.size() == 1) {
-                        openAlbumDetails(albums.get(0));
-                    } else {
-                        showAlbumBottomSheet(albums);
-                    }
+                    showAlbumBottomSheet(albums);
                 });
             }
 
             @Override
             public void onError(int messageRes, String detail) {
                 runOnUiThread(() -> {
+                    if (!isActivityAlive()) return;
                     layoutLoading.setVisibility(View.GONE);
                     String message = getString(messageRes, ErrorMessages.localize(CameraActivity.this, detail));
                     Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();
@@ -186,7 +282,8 @@ public class CameraActivity extends AppCompatActivity {
 
     /** Exibe um BottomSheet estilizado que permite rolagem interna sem fechar acidentalmente */
     private void showAlbumBottomSheet(List<Album> albums) {
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+        final BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+        albumBottomSheet = bottomSheet;
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_album_selection, null);
 
         ListView listView = dialogView.findViewById(R.id.listAlbums);
