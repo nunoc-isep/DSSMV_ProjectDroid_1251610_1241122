@@ -49,7 +49,8 @@ public class SpotifyAuthManager implements SpotifyAuthService {
     public static final String REDIRECT_URI = "albumsnap://callback";
 
     private static final String SCOPES =
-            "playlist-modify-private playlist-modify-public user-library-modify";
+            "playlist-read-private playlist-read-collaborative "
+            + "playlist-modify-private playlist-modify-public user-library-modify";
 
     private static final String AUTH_URL = "https://accounts.spotify.com/authorize";
     private static final String TOKEN_URL = "https://accounts.spotify.com/api/token";

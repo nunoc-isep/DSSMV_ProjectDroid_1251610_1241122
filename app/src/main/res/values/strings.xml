@@ -54,6 +54,16 @@
     <string name="preview_pause_cd">Stop preview</string>
     <string name="preview_unavailable">No preview available for this track</string>
     <string name="preview_error">Could not play the preview</string>
+    <string name="track_menu_cd">More options</string>
+    <string name="menu_track_favourite">Add to Spotify favourites</string>
+    <string name="menu_track_playlist">Add to playlist…</string>
+    <string name="playlist_loading">Loading your playlists…</string>
+    <string name="playlist_choose">Add to playlist</string>
+    <string name="playlist_none">You have no playlists you can add songs to.</string>
+    <string name="playlist_unnamed">Untitled playlist</string>
+    <string name="toast_track_favourite_ok">“%1$s” added to your Spotify favourites</string>
+    <string name="toast_track_playlist_ok">“%1$s” added to %2$s</string>
+    <string name="error_playlist_permission">Missing permission to use your playlists. Log out in Settings and log in again to allow it.</string>
     <plurals name="track_count">
         <item quantity="one">%d track</item>
         <item quantity="other">%d tracks</item>

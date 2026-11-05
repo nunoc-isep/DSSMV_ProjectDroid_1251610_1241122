@@ -19,7 +19,7 @@ import java.util.Objects;
 
 /**
  * Linhas de faixas: numero, titulo, duracao (mm:ss) e botao de preview
- * (play / a carregar / pause).
+ * (play / a carregar / pause) e menu de 3 pontos.
  */
 public class TrackAdapter extends BaseAdapter {
 
@@ -33,9 +33,15 @@ public class TrackAdapter extends BaseAdapter {
         void onPreviewClick(Track track);
     }
 
+    /** Chamado quando o utilizador toca nos 3 pontos de uma faixa ("anchor" e o botao tocado). */
+    public interface OnTrackMenuClickListener {
+        void onTrackMenuClick(Track track, View anchor);
+    }
+
     private final LayoutInflater inflater;
     private List<Track> items = new ArrayList<>();
     private OnPreviewClickListener previewListener;
+    private OnTrackMenuClickListener menuListener;
 
     // Apenas uma faixa de cada vez tem preview ativa
     private String previewTrackId;
@@ -52,6 +58,10 @@ public class TrackAdapter extends BaseAdapter {
 
     public void setOnPreviewClickListener(OnPreviewClickListener listener) {
         this.previewListener = listener;
+    }
+
+    public void setOnTrackMenuClickListener(OnTrackMenuClickListener listener) {
+        this.menuListener = listener;
     }
 
     /** Atualiza o botao da faixa indicada; as restantes voltam a "play". */
@@ -103,6 +113,9 @@ public class TrackAdapter extends BaseAdapter {
         holder.preview.setOnClickListener(v -> {
             if (previewListener != null) previewListener.onPreviewClick(track);
         });
+        holder.menu.setOnClickListener(v -> {
+            if (menuListener != null) menuListener.onTrackMenuClick(track, v);
+        });
         return convertView;
     }
 
@@ -141,6 +154,7 @@ public class TrackAdapter extends BaseAdapter {
         final TextView duration;
         final ImageButton preview;
         final ProgressBar previewLoading;
+        final ImageButton menu;
 
         ViewHolder(View row) {
             number = row.findViewById(R.id.txtTrackNumber);
@@ -148,6 +162,7 @@ public class TrackAdapter extends BaseAdapter {
             duration = row.findViewById(R.id.txtTrackDuration);
             preview = row.findViewById(R.id.btnPreview);
             previewLoading = row.findViewById(R.id.progressPreview);
+            menu = row.findViewById(R.id.btnTrackMenu);
         }
     }
 }

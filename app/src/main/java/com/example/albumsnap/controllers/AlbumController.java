@@ -8,12 +8,17 @@ import com.example.albumsnap.external.SpotifyAlbumSearchService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAuthManager;
 import com.example.albumsnap.external.SpotifyFavouriteAlbumService;
+import com.example.albumsnap.external.SpotifyFavouriteTrackService;
+import com.example.albumsnap.external.SpotifyPlaylistService;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Playlist;
 import com.example.albumsnap.model.Track;
 import com.example.albumsnap.repository.AlbumRepository;
 import com.example.albumsnap.repository.LocalAlbumRepository;
 import com.example.albumsnap.services.AlbumSearchService;
 import com.example.albumsnap.services.FavouriteAlbumService;
+import com.example.albumsnap.services.FavouriteTrackService;
+import com.example.albumsnap.services.PlaylistService;
 import com.example.albumsnap.services.PreviewService;
 import com.example.albumsnap.storage.SqliteAlbumRepository;
 import com.example.albumsnap.util.Background;
@@ -24,7 +29,8 @@ import java.util.Map;
 
 /**
  * Logica do ecra do album: obter o album, guardar na Library da app,
- * adicionar aos favoritos do Spotify e obter previews das faixas.
+ * adicionar o album ou uma faixa aos favoritos do Spotify, adicionar faixas a playlists
+ * e obter previews das faixas.
  * Tudo corre fora da UI thread.
  */
 public class AlbumController {
@@ -44,15 +50,20 @@ public class AlbumController {
     private final FavouriteAlbumService favouriteService;
     private final LocalAlbumRepository localRepository;
     private final PreviewService previewService;
+    private final FavouriteTrackService favouriteTrackService;
+    private final PlaylistService playlistService;
 
     public AlbumController(AlbumRepository remoteRepository, AlbumSearchService searchService,
                            FavouriteAlbumService favouriteService, LocalAlbumRepository localRepository,
-                           PreviewService previewService) {
+                           PreviewService previewService, FavouriteTrackService favouriteTrackService,
+                           PlaylistService playlistService) {
         this.remoteRepository = remoteRepository;
         this.searchService = searchService;
         this.favouriteService = favouriteService;
         this.localRepository = localRepository;
         this.previewService = previewService;
+        this.favouriteTrackService = favouriteTrackService;
+        this.playlistService = playlistService;
     }
 
     /** Liga as pecas reais (Spotify + Deezer + SQLite). */
@@ -63,7 +74,8 @@ public class AlbumController {
         AlbumRepository repository = new SpotifyAlbumRepository(client, favourite);
         AlbumSearchService search = new SpotifyAlbumSearchService(client, repository);
         return new AlbumController(repository, search, favourite, new SqliteAlbumRepository(context),
-                new DeezerPreviewService());
+                new DeezerPreviewService(), new SpotifyFavouriteTrackService(client),
+                new SpotifyPlaylistService(client));
     }
 
     public void getAlbum(final String spotifyId, Callback<Album> callback) {
@@ -131,6 +143,37 @@ public class AlbumController {
             @Override
             public Boolean call() throws Exception {
                 favouriteService.addAlbum(spotifyId);
+                return Boolean.TRUE;
+            }
+        }, callback);
+    }
+
+    /** Adiciona a faixa aos favoritos (Liked Songs) do Spotify. */
+    public void addTrackToSpotifyFavourites(final String trackId, Callback<Boolean> callback) {
+        Background.run(new Background.Task<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                favouriteTrackService.addTrack(trackId);
+                return Boolean.TRUE;
+            }
+        }, callback);
+    }
+
+    /** Playlists da conta onde se podem adicionar faixas (proprias e colaborativas). */
+    public void getEditablePlaylists(Callback<List<Playlist>> callback) {
+        Background.run(new Background.Task<List<Playlist>>() {
+            @Override
+            public List<Playlist> call() throws Exception {
+                return playlistService.getEditablePlaylists();
+            }
+        }, callback);
+    }
+
+    public void addTrackToPlaylist(final String playlistId, final String trackId, Callback<Boolean> callback) {
+        Background.run(new Background.Task<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                playlistService.addTrack(playlistId, trackId);
                 return Boolean.TRUE;
             }
         }, callback);

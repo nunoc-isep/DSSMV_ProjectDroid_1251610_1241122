@@ -5,6 +5,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -14,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.albumsnap.R;
 import com.example.albumsnap.controllers.AlbumController;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Playlist;
 import com.example.albumsnap.model.Track;
 import com.example.albumsnap.util.Callback;
 import com.example.albumsnap.util.EdgeInsets;
@@ -21,15 +23,18 @@ import com.example.albumsnap.util.ErrorMessages;
 import com.example.albumsnap.util.ImageLoader;
 import com.example.albumsnap.util.PreviewPlayer;
 import com.example.albumsnap.views.adapters.TrackAdapter;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
  * AlbumView do diagrama: capa, nome, artista, outras informacoes e faixas, com os botoes
  * "Save to Library" (da app) e "Add to Spotify favourites". Cada faixa tem um botao
- * play/pause para ouvir a preview de 30 s.
+ * play/pause para ouvir a preview de 30 s e um menu de 3 pontos para a adicionar aos favoritos
+ * do Spotify ou a uma playlist da conta.
  *
  * Extras: EXTRA_SPOTIFY_ID (obrigatorio) e EXTRA_FROM_SCAN (true quando vem de uma
  * digitalizacao, para o album aparecer na caixa Recent).
@@ -62,6 +67,8 @@ public class AlbumActivity extends AppCompatActivity {
     private String previewTrackId;                                   // faixa a carregar ou a tocar
     private final Map<String, String> previewUrls = new HashMap<>();  // "" = sem preview
 
+    private boolean loadingPlaylists;   // evita pedir a lista duas vezes se o utilizador tocar de novo
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +92,7 @@ public class AlbumActivity extends AppCompatActivity {
         trackAdapter = new TrackAdapter(this);
         listTracks.setAdapter(trackAdapter);
         trackAdapter.setOnPreviewClickListener(this::onPreviewClick);
+        trackAdapter.setOnTrackMenuClickListener(this::onTrackMenuClick);
 
         previewPlayer = new PreviewPlayer(new PreviewPlayer.Listener() {
             @Override
@@ -277,6 +285,120 @@ public class AlbumActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    // ------------------------------------------------------------ menu da faixa (3 pontos)
+
+    private void onTrackMenuClick(final Track track, View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.inflate(R.menu.menu_track);
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.action_track_favourite) {
+                addTrackToFavourites(track);
+                return true;
+            }
+            if (id == R.id.action_track_playlist) {
+                chooseAndAddToPlaylist(track);
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
+    private void addTrackToFavourites(final Track track) {
+        if (track.getSpotifyId() == null || track.getSpotifyId().isEmpty()) {
+            Toast.makeText(this, R.string.error_spotify_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        controller.addTrackToSpotifyFavourites(track.getSpotifyId(), new Callback<Boolean>() {
+            @Override
+            public void onResult(Boolean ok) {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(AlbumActivity.this,
+                        getString(R.string.toast_track_favourite_ok, track.getTitle()),
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                showToastError(message);
+            }
+        });
+    }
+
+    /** Pede as playlists da conta, mostra uma lista para escolher e adiciona a faixa a escolhida. */
+    private void chooseAndAddToPlaylist(final Track track) {
+        if (loadingPlaylists) return;
+        if (track.getSpotifyId() == null || track.getSpotifyId().isEmpty()) {
+            Toast.makeText(this, R.string.error_spotify_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        loadingPlaylists = true;
+        Toast.makeText(this, R.string.playlist_loading, Toast.LENGTH_SHORT).show();
+
+        controller.getEditablePlaylists(new Callback<List<Playlist>>() {
+            @Override
+            public void onResult(List<Playlist> playlists) {
+                loadingPlaylists = false;
+                if (isFinishing() || isDestroyed()) return;
+                if (playlists.isEmpty()) {
+                    Toast.makeText(AlbumActivity.this, R.string.playlist_none, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                showPlaylistPicker(track, playlists);
+            }
+
+            @Override
+            public void onError(String message) {
+                loadingPlaylists = false;
+                if (isFinishing() || isDestroyed()) return;
+                showToastError(message);
+            }
+        });
+    }
+
+    private void showPlaylistPicker(final Track track, final List<Playlist> playlists) {
+        String[] names = new String[playlists.size()];
+        for (int i = 0; i < names.length; i++) {
+            String name = playlists.get(i).getName();
+            names[i] = name.isEmpty() ? getString(R.string.playlist_unnamed) : name;
+        }
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.playlist_choose)
+                .setItems(names, (dialog, which) ->
+                        addTrackToPlaylist(track, playlists.get(which), names[which]))
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
+    private void addTrackToPlaylist(final Track track, Playlist playlist, final String playlistName) {
+        controller.addTrackToPlaylist(playlist.getSpotifyId(), track.getSpotifyId(), new Callback<Boolean>() {
+            @Override
+            public void onResult(Boolean ok) {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(AlbumActivity.this,
+                        getString(R.string.toast_track_playlist_ok, track.getTitle(), playlistName),
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                showToastError(message);
+            }
+        });
+    }
+
+    /** Erro numa chamada as playlists/favoritos. 403 aqui costuma ser falta de permissao (scope). */
+    private void showToastError(String message) {
+        String text = ErrorMessages.SPOTIFY_FORBIDDEN.equals(message)
+                ? getString(R.string.error_playlist_permission)
+                : ErrorMessages.localize(this, message);
+        Toast.makeText(this, text, Toast.LENGTH_LONG).show();
     }
 
     /** Toque no botao de uma faixa: alterna entre Play, Pause e troca de faixa. */

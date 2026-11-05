@@ -5,6 +5,7 @@ import android.util.Log;
 import com.example.albumsnap.services.SpotifyAuthService;
 import com.example.albumsnap.util.ErrorMessages;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,6 +16,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -52,6 +54,30 @@ public class SpotifyApiClient {
             return new JSONObject(text);
         } catch (JSONException e) {
             throw new IOException(ErrorMessages.UNEXPECTED_RESPONSE, e);
+        }
+    }
+
+    /** POST com corpo JSON (a resposta nao e usada). */
+    public void post(String pathAndQuery, JSONObject body) throws IOException {
+        byte[] bytes = body != null ? body.toString().getBytes(StandardCharsets.UTF_8) : new byte[0];
+        request("POST", pathAndQuery, bytes);
+    }
+
+    /**
+     * Guarda um item na biblioteca do utilizador (PUT /me/library) a partir do seu URI do Spotify,
+     * p.ex. "spotify:album:..." ou "spotify:track:...". Forma documentada: URI no parametro "uris";
+     * se der 400, tenta com os URIs num corpo JSON {"uris": [...]}.
+     */
+    public void saveToLibrary(String uri) throws IOException {
+        try {
+            put("/me/library?uris=" + URLEncoder.encode(uri, "UTF-8"), null);
+        } catch (ApiException e) {
+            if (e.getStatus() != 400) throw e;
+            try {
+                put("/me/library", new JSONObject().put("uris", new JSONArray().put(uri)));
+            } catch (JSONException je) {
+                throw new IOException(je.getMessage(), je);
+            }
         }
     }
 

@@ -57,4 +57,14 @@
             android:layout_gravity="center"
             android:visibility="gone" />
     </FrameLayout>
+
+    <!-- Menu da faixa (3 pontos): favoritos do Spotify / adicionar a uma playlist -->
+    <ImageButton
+        android:id="@+id/btnTrackMenu"
+        android:layout_width="40dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/track_menu_cd"
+        android:src="@drawable/ic_more_vert"
+        app:tint="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

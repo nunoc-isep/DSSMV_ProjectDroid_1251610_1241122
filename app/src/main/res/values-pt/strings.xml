@@ -55,6 +55,16 @@
     <string name="preview_pause_cd">Parar pré-visualização</string>
     <string name="preview_unavailable">Sem pré-visualização disponível para esta faixa</string>
     <string name="preview_error">Não foi possível reproduzir a pré-visualização</string>
+    <string name="track_menu_cd">Mais opções</string>
+    <string name="menu_track_favourite">Adicionar aos favoritos do Spotify</string>
+    <string name="menu_track_playlist">Adicionar a uma playlist…</string>
+    <string name="playlist_loading">A carregar as tuas playlists…</string>
+    <string name="playlist_choose">Adicionar à playlist</string>
+    <string name="playlist_none">Não tens playlists onde possas adicionar faixas.</string>
+    <string name="playlist_unnamed">Playlist sem nome</string>
+    <string name="toast_track_favourite_ok">“%1$s” adicionada aos teus favoritos do Spotify</string>
+    <string name="toast_track_playlist_ok">“%1$s” adicionada a %2$s</string>
+    <string name="error_playlist_permission">Falta permissão para usar as tuas playlists. Termina a sessão nas Definições e entra outra vez para a conceder.</string>
     <plurals name="track_count">
         <item quantity="one">%d faixa</item>
         <item quantity="other">%d faixas</item>
