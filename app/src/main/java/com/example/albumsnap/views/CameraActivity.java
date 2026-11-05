@@ -45,11 +45,13 @@ public class CameraActivity extends AppCompatActivity {
     private static final String KEY_PHOTO_PATH = "photo_path";
     private static final String PHOTO_PREFIX = "album_cover_";
     private static final String KEY_CAMERA_OPENED = "is_camera_opened";
+    private static final String KEY_PROCESSING = "is_processing";
 
     private CameraController cameraController;
     private Uri photoUri;
     private File photoFile;   // ficheiro temporario da foto; apagado assim que a imagem e lida para memoria
     private boolean isCameraOpened = false;
+    private boolean isProcessing = false;   // foto a ser analisada (nao se retoma se a Activity for recriada)
 
     private View layoutLoading;
     private TextView txtStatus;
@@ -111,6 +113,14 @@ public class CameraActivity extends AppCompatActivity {
             String path = savedInstanceState.getString(KEY_PHOTO_PATH);
             if (path != null) photoFile = new File(path);
             isCameraOpened = savedInstanceState.getBoolean(KEY_CAMERA_OPENED, false);
+            isProcessing = savedInstanceState.getBoolean(KEY_PROCESSING, false);
+        }
+
+        // Rede de seguranca: se o Android recriou o ecra (p.ex. a app foi morta em segundo plano)
+        // a meio da analise, esta nao pode ser retomada. Sai em vez de ficar num ecra vazio.
+        if (isProcessing) {
+            finish();
+            return;
         }
 
         if (!isCameraOpened) {
@@ -125,6 +135,7 @@ public class CameraActivity extends AppCompatActivity {
         outState.putParcelable(KEY_PHOTO_URI, photoUri);
         outState.putString(KEY_PHOTO_PATH, photoFile != null ? photoFile.getAbsolutePath() : null);
         outState.putBoolean(KEY_CAMERA_OPENED, isCameraOpened);
+        outState.putBoolean(KEY_PROCESSING, isProcessing);
     }
 
     private void checkPermissionAndOpenCamera() {
@@ -247,6 +258,7 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void processImage(Bitmap bitmap) {
+        isProcessing = true;
         layoutLoading.setVisibility(View.VISIBLE);
 
         cameraController.processCapturedImage(bitmap, new CameraController.CameraCallback() {

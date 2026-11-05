@@ -44,7 +44,11 @@
         </activity>
 
         <activity android:name=".views.MainMenuActivity" android:exported="false"/>
-        <activity android:name=".views.CameraActivity" android:exported="false"/>
+        <!-- configChanges: rodar o ecra nao recria a Activity, por isso a analise da foto continua -->
+        <activity
+                android:name=".views.CameraActivity"
+                android:exported="false"
+                android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"/>
         <activity android:name=".views.AlbumActivity" android:exported="false"/>
         <activity android:name=".views.LibraryActivity" android:exported="false"/>
         <activity android:name=".views.SettingsActivity" android:exported="false"/>
