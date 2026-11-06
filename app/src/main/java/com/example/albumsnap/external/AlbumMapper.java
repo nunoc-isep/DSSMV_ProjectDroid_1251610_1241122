@@ -28,7 +28,12 @@ final class AlbumMapper {
     static List<Track> toDomainTracks(List<TrackDTO> dtos) {
         List<Track> tracks = new ArrayList<>();
         for (TrackDTO t : dtos) {
-            tracks.add(new Track(t.getId(), t.getName(), t.getDurationMs(), t.getTrackNumber()));
+            List<Artist> artists = new ArrayList<>();
+            for (ArtistDTO a : t.getArtists()) {
+                artists.add(new Artist(a.getId(), a.getName()));
+            }
+            tracks.add(new Track(t.getId(), t.getName(), t.getDurationMs(), t.getTrackNumber(),
+                    t.getDiscNumber(), artists));
         }
         return tracks;
     }

@@ -43,8 +43,10 @@ public class AlbumDbHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Versao 1: ainda nao ha migracoes; recria a tabela
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE);
-        onCreate(db);
+        // A tabela guarda a Library do utilizador: NUNCA a apagar. Cada mudanca de esquema
+        // acrescenta aqui um passo que parte da versao antiga, por ordem, por exemplo:
+        //   if (oldVersion < 2) db.execSQL("ALTER TABLE " + TABLE + " ADD COLUMN nova_coluna TEXT");
+        //   if (oldVersion < 3) { ... }
+        // (e sobe DB_VERSION). Neste momento so existe a versao 1, por isso nao ha passos.
     }
 }

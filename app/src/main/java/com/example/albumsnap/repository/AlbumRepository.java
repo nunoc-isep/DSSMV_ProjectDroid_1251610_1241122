@@ -8,7 +8,4 @@ import java.io.IOException;
 public interface AlbumRepository {
 
     Album findBySpotifyId(String spotifyId) throws IOException;
-
-    /** Guarda o album na biblioteca do Spotify do utilizador. */
-    void save(Album album) throws IOException;
 }

@@ -9,6 +9,7 @@
     <string name="login_not_connected">Não ligado ao Spotify</string>
     <string name="login_error_cancelled">Login cancelado ou recusado.</string>
     <string name="login_error_invalid">Resposta de login inválida. Tenta outra vez.</string>
+    <string name="login_error_token">Não foi possível concluir o login no Spotify. Tenta outra vez.</string>
 
     <!-- Menu principal -->
     <string name="menu_library_cd">Biblioteca</string>
@@ -17,7 +18,6 @@
     <string name="menu_scan_hint">Toca para digitalizar a capa de um álbum</string>
     <string name="menu_recent_title">Digitalizações recentes</string>
     <string name="menu_recent_empty">Ainda não há digitalizações. Toca na câmara para digitalizar a capa de um álbum.</string>
-    <string name="menu_info_cd">Detalhes do álbum</string>
 
     <!-- Comum -->
     <string name="back_cd">Voltar</string>
@@ -47,6 +47,7 @@
     <string name="album_type_album">Álbum</string>
     <string name="album_type_single">Single</string>
     <string name="album_type_compilation">Compilação</string>
+    <string name="album_disc">Disco %1$d</string>
     <string name="toast_saved">Guardado na tua Biblioteca</string>
     <string name="toast_removed">Removido da tua Biblioteca</string>
     <string name="toast_favourite_ok">Álbum adicionado aos teus favoritos do Spotify</string>
@@ -81,7 +82,6 @@
     <string name="camera_error_load_image">Erro ao carregar a imagem capturada.</string>
     <string name="camera_permission_denied">Permissão da câmara recusada.</string>
     <string name="camera_error_temp_file">Erro ao criar o ficheiro temporário.</string>
-    <string name="camera_app_not_found">Aplicação de câmara não encontrada.</string>
     <string name="status_analyzing_vision">A analisar a capa com a Cloud Vision API…</string>
     <string name="status_searching_spotify">A procurar álbuns correspondentes no Spotify…</string>
 

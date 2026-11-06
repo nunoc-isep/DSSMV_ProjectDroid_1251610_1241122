@@ -2,23 +2,29 @@ package com.example.albumsnap.external;
 
 import com.example.albumsnap.dto.AlbumDTO;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Track;
 import com.example.albumsnap.repository.AlbumRepository;
-import com.example.albumsnap.services.FavouriteAlbumService;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-/** AlbumRepository com a Spotify Web API: GET /albums/{id}. */
+/** AlbumRepository com a Spotify Web API: GET /albums/{id} (e as paginas de faixas que faltarem). */
 public class SpotifyAlbumRepository implements AlbumRepository {
 
-    private final SpotifyApiClient client;
-    private final FavouriteAlbumService favouriteService;
+    private static final int TRACKS_PAGE_SIZE = 50;
+    private static final int MAX_TRACK_PAGES = 40;   // limite de seguranca: 2000 faixas
 
-    public SpotifyAlbumRepository(SpotifyApiClient client, FavouriteAlbumService favouriteService) {
+    private final SpotifyApiClient client;
+
+    public SpotifyAlbumRepository(SpotifyApiClient client) {
         this.client = client;
-        this.favouriteService = favouriteService;
     }
 
     @Override
@@ -27,17 +33,30 @@ public class SpotifyAlbumRepository implements AlbumRepository {
         JSONObject json = client.get("/albums/" + encoded);
         Album album = AlbumMapper.toDomain(AlbumDTO.fromJson(json));
 
-        // Se as faixas nao vieram dentro do album, pede-as a parte (ate 50)
-        if (album.getTracks().isEmpty() && album.getTotalTracks() > 0) {
-            JSONObject page = client.get("/albums/" + encoded + "/tracks?limit=50");
-            album.setTracks(AlbumMapper.toDomainTracks(
-                    AlbumDTO.tracksFromItems(page.optJSONArray("items"))));
-        }
-        return album;
-    }
+        // O pedido do album so traz as primeiras faixas: pede as restantes pagina a pagina.
+        // "fetched" conta as entradas recebidas (mesmo as nulas) para o offset ficar certo.
+        JSONObject embedded = json.optJSONObject("tracks");
+        JSONArray embeddedItems = embedded != null ? embedded.optJSONArray("items") : null;
+        int fetched = embeddedItems != null ? embeddedItems.length() : 0;
+        int total = Math.max(album.getTotalTracks(), embedded != null ? embedded.optInt("total", 0) : 0);
 
-    @Override
-    public void save(Album album) throws IOException {
-        favouriteService.addAlbum(album.getSpotifyId());
+        List<Track> tracks = new ArrayList<>(album.getTracks());
+        Set<String> seen = new HashSet<>();
+        for (Track t : tracks) seen.add(t.getSpotifyId());
+
+        int pages = 0;
+        while (fetched < total && pages++ < MAX_TRACK_PAGES) {
+            JSONObject page = client.get("/albums/" + encoded + "/tracks?limit=" + TRACKS_PAGE_SIZE
+                    + "&offset=" + fetched);
+            JSONArray items = page.optJSONArray("items");
+            if (items == null || items.length() == 0) break;
+
+            fetched += items.length();   // a pagina pode vir mais pequena do que o pedido
+            for (Track t : AlbumMapper.toDomainTracks(AlbumDTO.tracksFromItems(items))) {
+                if (seen.add(t.getSpotifyId())) tracks.add(t);
+            }
+        }
+        album.setTracks(tracks);
+        return album;
     }
 }

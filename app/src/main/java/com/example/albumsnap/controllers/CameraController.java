@@ -12,11 +12,9 @@ import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
 import com.example.albumsnap.external.SpotifyAlbumSearchService;
 import com.example.albumsnap.external.SpotifyAuthManager;
-import com.example.albumsnap.external.SpotifyFavouriteAlbumService;
 import com.example.albumsnap.model.Album;
 import com.example.albumsnap.repository.AlbumRepository;
 import com.example.albumsnap.services.AlbumSearchService;
-import com.example.albumsnap.services.FavouriteAlbumService;
 import com.example.albumsnap.services.ImageRecognitionService;
 import com.example.albumsnap.services.SpotifyAuthService;
 
@@ -54,8 +52,7 @@ public class CameraController {
     public CameraController(Context context) {
         SpotifyAuthService authService = SpotifyAuthManager.getInstance(context);
         SpotifyApiClient spotifyApiClient = new SpotifyApiClient(authService);
-        FavouriteAlbumService favouriteService = new SpotifyFavouriteAlbumService(spotifyApiClient);
-        AlbumRepository repository = new SpotifyAlbumRepository(spotifyApiClient, favouriteService);
+        AlbumRepository repository = new SpotifyAlbumRepository(spotifyApiClient);
 
         this.albumSearchService = new SpotifyAlbumSearchService(spotifyApiClient, repository);
         this.imageRecognitionService = new GoogleCloudVisionService();

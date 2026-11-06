@@ -1,31 +1,37 @@
 package com.example.albumsnap.controllers;
 
 import android.content.Context;
+import android.util.Log;
 
+import com.example.albumsnap.external.CompositePreviewService;
 import com.example.albumsnap.external.DeezerPreviewService;
+import com.example.albumsnap.external.ItunesPreviewService;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
-import com.example.albumsnap.external.SpotifyAlbumSearchService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAuthManager;
 import com.example.albumsnap.external.SpotifyFavouriteAlbumService;
 import com.example.albumsnap.external.SpotifyFavouriteTrackService;
 import com.example.albumsnap.external.SpotifyPlaylistService;
+import com.example.albumsnap.external.SpotifyTrackInfoService;
 import com.example.albumsnap.model.Album;
+import com.example.albumsnap.model.Artist;
 import com.example.albumsnap.model.Playlist;
+import com.example.albumsnap.model.PreviewQuery;
 import com.example.albumsnap.model.Track;
 import com.example.albumsnap.repository.AlbumRepository;
 import com.example.albumsnap.repository.LocalAlbumRepository;
-import com.example.albumsnap.services.AlbumSearchService;
 import com.example.albumsnap.services.FavouriteAlbumService;
 import com.example.albumsnap.services.FavouriteTrackService;
 import com.example.albumsnap.services.PlaylistService;
 import com.example.albumsnap.services.PreviewService;
+import com.example.albumsnap.services.TrackInfoService;
 import com.example.albumsnap.storage.SqliteAlbumRepository;
 import com.example.albumsnap.util.Background;
 import com.example.albumsnap.util.Callback;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Logica do ecra do album: obter o album, guardar na Library da app,
@@ -34,6 +40,8 @@ import java.util.Map;
  * Tudo corre fora da UI thread.
  */
 public class AlbumController {
+
+    private static final String TAG = "AlbumController";
 
     private static final Callback<Boolean> IGNORE = new Callback<Boolean>() {
         @Override
@@ -46,35 +54,37 @@ public class AlbumController {
     };
 
     private final AlbumRepository remoteRepository;
-    private final AlbumSearchService searchService;
     private final FavouriteAlbumService favouriteService;
     private final LocalAlbumRepository localRepository;
     private final PreviewService previewService;
+    private final TrackInfoService trackInfoService;
     private final FavouriteTrackService favouriteTrackService;
     private final PlaylistService playlistService;
 
-    public AlbumController(AlbumRepository remoteRepository, AlbumSearchService searchService,
-                           FavouriteAlbumService favouriteService, LocalAlbumRepository localRepository,
-                           PreviewService previewService, FavouriteTrackService favouriteTrackService,
+    public AlbumController(AlbumRepository remoteRepository, FavouriteAlbumService favouriteService,
+                           LocalAlbumRepository localRepository, PreviewService previewService,
+                           TrackInfoService trackInfoService, FavouriteTrackService favouriteTrackService,
                            PlaylistService playlistService) {
         this.remoteRepository = remoteRepository;
-        this.searchService = searchService;
         this.favouriteService = favouriteService;
         this.localRepository = localRepository;
         this.previewService = previewService;
+        this.trackInfoService = trackInfoService;
         this.favouriteTrackService = favouriteTrackService;
         this.playlistService = playlistService;
     }
 
-    /** Liga as pecas reais (Spotify + Deezer + SQLite). */
+    /** Liga as pecas reais (Spotify + Deezer/iTunes + SQLite). */
     public static AlbumController create(Context context) {
         SpotifyAuthManager auth = SpotifyAuthManager.getInstance(context);
         SpotifyApiClient client = new SpotifyApiClient(auth);
         SpotifyFavouriteAlbumService favourite = new SpotifyFavouriteAlbumService(client);
-        AlbumRepository repository = new SpotifyAlbumRepository(client, favourite);
-        AlbumSearchService search = new SpotifyAlbumSearchService(client, repository);
-        return new AlbumController(repository, search, favourite, new SqliteAlbumRepository(context),
-                new DeezerPreviewService(), new SpotifyFavouriteTrackService(client),
+        AlbumRepository repository = new SpotifyAlbumRepository(client);
+        // Previews: a Deezer primeiro (pelo ISRC); se nao tiver a faixa, o iTunes
+        PreviewService previews = new CompositePreviewService(
+                new DeezerPreviewService(), new ItunesPreviewService());
+        return new AlbumController(repository, favourite, new SqliteAlbumRepository(context), previews,
+                new SpotifyTrackInfoService(client), new SpotifyFavouriteTrackService(client),
                 new SpotifyPlaylistService(client));
     }
 
@@ -83,16 +93,6 @@ public class AlbumController {
             @Override
             public Album call() throws Exception {
                 return remoteRepository.findBySpotifyId(spotifyId);
-            }
-        }, callback);
-    }
-
-    /** Pesquisa por texto (ainda nao usada pelos ecras; fica pronta para o fluxo da camara). */
-    public void searchAlbums(final String query, Callback<List<Album>> callback) {
-        Background.run(new Background.Task<List<Album>>() {
-            @Override
-            public List<Album> call() throws Exception {
-                return searchService.searchAlbums(query);
             }
         }, callback);
     }
@@ -179,23 +179,33 @@ public class AlbumController {
         }, callback);
     }
 
-    /** URL da preview (30 s) da faixa; o resultado é null se não houver preview. */
+    /**
+     * URL da preview (30 s) da faixa; o resultado é null se nenhuma fonte tiver a mesma gravação.
+     * O ISRC (pedido extra ao Spotify) permite achar a gravação exata; sem ele procura-se por texto.
+     */
     public void getPreviewUrl(final Album album, final Track track, Callback<String> callback) {
-        final String artist = album.getArtists().isEmpty() ? "" : album.getArtists().get(0).getName();
-        final String albumTitle = album.getTitle();
-
         Background.run(new Background.Task<String>() {
             @Override
             public String call() throws Exception {
-                // Tenta procurar a faixa no contexto do artista e album no Deezer
-                String url = previewService.findPreviewUrl(artist, track.getTitle());
-                if (url == null && albumTitle != null && !albumTitle.isEmpty()) {
-                    Map<String, String> albumPreviews = previewService.fetchAlbumPreviews(artist, albumTitle);
-                    String normalizedTrack = DeezerPreviewService.normalize(DeezerPreviewService.cleanTitle(track.getTitle()));
-                    url = albumPreviews.get(normalizedTrack);
+                String isrc = "";
+                try {
+                    isrc = trackInfoService.getIsrc(track.getSpotifyId());
+                } catch (IOException e) {
+                    Log.w(TAG, "Sem ISRC para " + track.getSpotifyId() + ": " + e.getMessage());
                 }
-                return url;
+                return previewService.findPreviewUrl(new PreviewQuery(isrc, track.getTitle(),
+                        artistNamesOf(album, track), album.getTitle(), track.getDurationMs()));
             }
         }, callback);
+    }
+
+    /** Artistas da faixa (numa compilacao diferem dos do album); sem eles, os do album. */
+    private static List<String> artistNamesOf(Album album, Track track) {
+        List<String> names = new ArrayList<>();
+        for (Artist artist : track.getArtists()) names.add(artist.getName());
+        if (names.isEmpty()) {
+            for (Artist artist : album.getArtists()) names.add(artist.getName());
+        }
+        return names;
     }
 }

@@ -157,7 +157,8 @@ public class SpotifyAuthManager implements SpotifyAuthService {
                     saveTokens(postForm(TOKEN_URL, form));
                     postSuccess(callback);
                 } catch (Exception e) {
-                    postError(callback, "Falha ao obter o token: " + e.getMessage());
+                    Log.w("SpotifyAuthManager", "Falha ao obter o token", e);
+                    postError(callback, ErrorMessages.LOGIN_TOKEN_FAILED);
                 }
             }
         });

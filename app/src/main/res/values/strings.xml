@@ -8,6 +8,7 @@
     <string name="login_not_connected">Not connected to Spotify</string>
     <string name="login_error_cancelled">Login cancelled or denied.</string>
     <string name="login_error_invalid">Invalid login response. Please try again.</string>
+    <string name="login_error_token">Could not complete the Spotify login. Please try again.</string>
 
     <!-- Main menu -->
     <string name="menu_library_cd">Library</string>
@@ -16,7 +17,6 @@
     <string name="menu_scan_hint">Tap to scan an album cover</string>
     <string name="menu_recent_title">Recent scans</string>
     <string name="menu_recent_empty">No scans yet. Tap the camera to scan an album cover.</string>
-    <string name="menu_info_cd">Album details</string>
 
     <!-- Common -->
     <string name="back_cd">Back</string>
@@ -46,6 +46,7 @@
     <string name="album_type_album">Album</string>
     <string name="album_type_single">Single</string>
     <string name="album_type_compilation">Compilation</string>
+    <string name="album_disc">Disc %1$d</string>
     <string name="toast_saved">Saved to your Library</string>
     <string name="toast_removed">Removed from your Library</string>
     <string name="toast_favourite_ok">Album added to your Spotify favourites</string>
@@ -80,8 +81,7 @@
     <string name="camera_error_load_image">Error loading captured image.</string>
     <string name="camera_permission_denied">Camera permission denied.</string>
     <string name="camera_error_temp_file">Error creating temporary file.</string>
-    <string name="camera_app_not_found">Camera application not found.</string>
-    <string name="status_analyzing_vision">Analysing album cover with Cloud Vision API…</string>
+    <string name="status_analyzing_vision">Analyzing album cover with Cloud Vision API…</string>
     <string name="status_searching_spotify">Searching for corresponding albums in Spotify…</string>
 
     <!-- Settings -->

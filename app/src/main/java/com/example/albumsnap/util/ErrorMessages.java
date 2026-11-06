@@ -18,6 +18,7 @@ public final class ErrorMessages {
     public static final String NO_SESSION = "error.no_session";
     public static final String LOGIN_CANCELLED = "error.login_cancelled";
     public static final String LOGIN_INVALID = "error.login_invalid";
+    public static final String LOGIN_TOKEN_FAILED = "error.login_token_failed";
     public static final String UNEXPECTED_RESPONSE = "error.unexpected_response";
     public static final String SESSION_EXPIRED = "error.session_expired";
     public static final String SPOTIFY_FORBIDDEN = "error.spotify_forbidden";
@@ -45,6 +46,8 @@ public final class ErrorMessages {
                 return context.getString(R.string.login_error_cancelled);
             case LOGIN_INVALID:
                 return context.getString(R.string.login_error_invalid);
+            case LOGIN_TOKEN_FAILED:
+                return context.getString(R.string.login_error_token);
             case UNEXPECTED_RESPONSE:
                 return context.getString(R.string.error_unexpected_response);
             case SESSION_EXPIRED:
