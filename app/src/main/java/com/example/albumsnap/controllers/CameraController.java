@@ -7,6 +7,7 @@ import android.util.Log;
 import androidx.annotation.StringRes;
 
 import com.example.albumsnap.R;
+import com.example.albumsnap.dto.VisionResponseDTO;
 import com.example.albumsnap.external.GoogleCloudVisionService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
@@ -73,10 +74,12 @@ public class CameraController {
             @Override
             public void onSuccess(String jsonResult) {
                 if (cancelled) return;
-                final List<String> queries = GoogleCloudVisionService.parseSearchQueries(jsonResult);
-                final List<String> spotifyIds = GoogleCloudVisionService.parseSpotifyAlbumIds(jsonResult);
-                final Set<String> coverKeys = GoogleCloudVisionService.parseCoverKeys(jsonResult);
-                Log.d(TAG, "vision: " + GoogleCloudVisionService.describeResponse(jsonResult));
+                // O JSON le-se uma so vez; as funcoes seguintes trabalham sobre o objeto ja lido
+                final VisionResponseDTO.AnnotateImageResponse vision = GoogleCloudVisionService.parseResponse(jsonResult);
+                final List<String> queries = GoogleCloudVisionService.parseSearchQueries(vision);
+                final List<String> spotifyIds = GoogleCloudVisionService.parseSpotifyAlbumIds(vision);
+                final Set<String> coverKeys = GoogleCloudVisionService.parseCoverKeys(vision);
+                Log.d(TAG, "vision: " + GoogleCloudVisionService.describeResponse(vision));
                 Log.d(TAG, "queries=" + queries + " spotifyIds=" + spotifyIds + " coverKeys=" + coverKeys);
 
                 if (!queries.isEmpty() || !spotifyIds.isEmpty()) {

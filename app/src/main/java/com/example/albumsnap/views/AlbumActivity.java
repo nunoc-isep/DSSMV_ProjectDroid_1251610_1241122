@@ -35,7 +35,6 @@ import java.util.Objects;
  * "Save to Library" (da app) e "Add to Spotify favourites". Cada faixa tem um botao
  * play/pause para ouvir a preview de 30 s e um menu de 3 pontos para a adicionar aos favoritos
  * do Spotify ou a uma playlist da conta.
- *
  * Extras: EXTRA_SPOTIFY_ID (obrigatorio) e EXTRA_FROM_SCAN (true quando vem de uma
  * digitalizacao, para o album aparecer na caixa Recent).
  */
@@ -401,7 +400,10 @@ public class AlbumActivity extends AppCompatActivity {
         Toast.makeText(this, text, Toast.LENGTH_LONG).show();
     }
 
-    /** Toque no botao de uma faixa: alterna entre Play, Pause e troca de faixa. */
+    /**
+     * Toque no botao de uma faixa: alterna entre Play, Pause e troca de faixa.
+     * Se a faixa ainda esta a carregar (sem audio), o toque cancela o carregamento.
+     */
     private void onPreviewClick(final Track track) {
         final String id = track.getSpotifyId();
 
@@ -411,6 +413,10 @@ public class AlbumActivity extends AppCompatActivity {
                 previewPlayer.pause();
             } else if (previewPlayer.isPaused()) {
                 previewPlayer.play(previewUrls.get(id));
+            } else {
+                // A carregar (a procurar o URL ou a preparar o audio): cancela. Se o URL ainda
+                // estiver a chegar, a resposta fica em cache e e ignorada (previewTrackId e null).
+                stopPreview();
             }
             return;
         }

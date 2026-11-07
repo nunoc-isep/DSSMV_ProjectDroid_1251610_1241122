@@ -16,6 +16,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -63,6 +64,7 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     @Override
     public void analyzeImage(Bitmap bitmap, VisionCallback callback) {
         new Thread(() -> {
+            final String result;
             try {
                 // 1+2. Recortar a área central (80%) e reduzir mantendo a proporção
                 Bitmap resizedBitmap = prepareForUpload(bitmap);
@@ -86,18 +88,19 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                         .build();
 
                 try (Response response = Http.CLIENT.newCall(request).execute()) {
-                    if (response.isSuccessful()) {
-                        // response.body() é garantido não ser nulo quando response.isSuccessful() é true
-                        String result = response.body().string();
-                        callback.onSuccess(result);
-                    } else {
-                        callback.onError(new Exception("Vision API HTTP " + response.code()));
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Vision API HTTP " + response.code());
                     }
+                    // response.body() é garantido não ser nulo quando response.isSuccessful() é true
+                    result = response.body().string();
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Erro ao processar imagem na Cloud Vision API", e);
                 callback.onError(e);
+                return;
             }
+            // Fora do try: um erro dentro do onSuccess nao pode voltar a chegar ao onError
+            callback.onSuccess(result);
         }).start();
     }
 
@@ -156,6 +159,22 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     }
 
     /**
+     * Le o JSON da resposta da Cloud Vision (uma so vez) e devolve a primeira resposta, ou null
+     * se o JSON vier vazio ou invalido. As funcoes parse... e describeResponse recebem este objeto.
+     */
+    public static VisionResponseDTO.AnnotateImageResponse parseResponse(String jsonResponse) {
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) return null;
+        try {
+            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
+            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) return null;
+            return dto.getResponses().get(0);
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao ler a resposta da Cloud Vision", e);
+            return null;
+        }
+    }
+
+    /**
      * Pesquisas candidatas para o Spotify, da mais para a menos fiavel:
      * 1. melhor palpite web do Google ("artista album ... album cover" sem o sufixo);
      * 2. texto OCR da capa, limpo e limitado a poucas palavras;
@@ -165,18 +184,13 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
      * Nunca devolve rotulos genericos ("Poster", "Font", ...), mas nomes como "Art Blakey" ou
      * "Earth, Wind & Fire" passam.
      */
-    public static List<String> parseSearchQueries(String jsonResponse) {
+    public static List<String> parseSearchQueries(VisionResponseDTO.AnnotateImageResponse response) {
         Set<String> queries = new LinkedHashSet<>();
-        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
+        if (response == null) {
             return new ArrayList<>(queries);
         }
 
         try {
-            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
-            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) {
-                return new ArrayList<>(queries);
-            }
-            VisionResponseDTO.AnnotateImageResponse response = dto.getResponses().get(0);
             VisionResponseDTO.WebDetection web = response.getWebDetection();
 
             // 1. Melhor palpite do Google
@@ -235,16 +249,12 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
      * (open.spotify.com/album/...). Os mais repetidos primeiro. Uma pagina de album do Spotify
      * com esta imagem e quase de certeza o album certo, sem precisar de pesquisar por texto.
      */
-    public static List<String> parseSpotifyAlbumIds(String jsonResponse) {
+    public static List<String> parseSpotifyAlbumIds(VisionResponseDTO.AnnotateImageResponse response) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        if (jsonResponse == null || jsonResponse.trim().isEmpty()) return new ArrayList<>();
+        if (response == null) return new ArrayList<>();
 
         try {
-            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
-            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) {
-                return new ArrayList<>();
-            }
-            VisionResponseDTO.WebDetection web = dto.getResponses().get(0).getWebDetection();
+            VisionResponseDTO.WebDetection web = response.getWebDetection();
             if (web == null || web.getPagesWithMatchingImages() == null) return new ArrayList<>();
 
             for (VisionResponseDTO.WebPage page : web.getPagesWithMatchingImages()) {
@@ -273,14 +283,12 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
      * a foto. Se uma capa candidata tiver o mesmo identificador, e exatamente a mesma imagem.
      * Funciona mesmo em capas sem texto.
      */
-    public static Set<String> parseCoverKeys(String jsonResponse) {
+    public static Set<String> parseCoverKeys(VisionResponseDTO.AnnotateImageResponse response) {
         Set<String> keys = new LinkedHashSet<>();
-        if (jsonResponse == null || jsonResponse.trim().isEmpty()) return keys;
+        if (response == null) return keys;
 
         try {
-            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
-            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) return keys;
-            VisionResponseDTO.WebDetection web = dto.getResponses().get(0).getWebDetection();
+            VisionResponseDTO.WebDetection web = response.getWebDetection();
             if (web == null) return keys;
 
             addCoverKeys(keys, web.getFullMatchingImages());
@@ -306,12 +314,10 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     }
 
     /** Resumo curto da resposta (para o logcat): palpite, entidades, paginas e imagens iguais. */
-    public static String describeResponse(String jsonResponse) {
+    public static String describeResponse(VisionResponseDTO.AnnotateImageResponse r) {
+        if (r == null) return "(vazia)";
         StringBuilder sb = new StringBuilder();
         try {
-            VisionResponseDTO dto = new Gson().fromJson(jsonResponse, VisionResponseDTO.class);
-            if (dto == null || dto.getResponses() == null || dto.getResponses().isEmpty()) return "(vazia)";
-            VisionResponseDTO.AnnotateImageResponse r = dto.getResponses().get(0);
 
             String ocr = r.getFullTextAnnotation() != null ? r.getFullTextAnnotation().getText() : null;
             sb.append("ocr=").append(ocr == null ? "" : ocr.replace('\n', ' ').trim());

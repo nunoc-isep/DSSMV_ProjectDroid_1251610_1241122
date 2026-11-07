@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
     <!-- Garante que o app requer câmara no dispositivo -->
-    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="true"/>
 
     <!-- Permissões necessárias -->
     <uses-permission android:name="android.permission.INTERNET"/>
