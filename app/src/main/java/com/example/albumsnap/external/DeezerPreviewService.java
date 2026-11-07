@@ -23,11 +23,22 @@ public class DeezerPreviewService implements PreviewService {
     private static final int SEARCH_LIMIT = 15;
     private static final int ERROR_QUOTA = 4;   // codigo de erro da Deezer: limite de pedidos
 
+    private final String api;
+
+    public DeezerPreviewService() {
+        this(API);
+    }
+
+    /** So para testes: aponta o servico para um servidor local. */
+    DeezerPreviewService(String api) {
+        this.api = api;
+    }
+
     @Override
     public String findPreviewUrl(PreviewQuery query) throws IOException {
         // 1. ISRC: a mesma gravacao, sem duvidas
         if (!query.getIsrc().isEmpty()) {
-            JSONObject track = getOrNull(API + "/track/isrc:" + URLEncoder.encode(query.getIsrc(), "UTF-8"));
+            JSONObject track = getOrNull(api + "/track/isrc:" + URLEncoder.encode(query.getIsrc(), "UTF-8"));
             String preview = JsonHttp.text(track, "preview");
             if (!preview.isEmpty()) return JsonHttp.secure(preview);
         }
@@ -47,7 +58,7 @@ public class DeezerPreviewService implements PreviewService {
     }
 
     private String searchBest(String q, PreviewQuery query) throws IOException {
-        JSONObject json = getOrNull(API + "/search?limit=" + SEARCH_LIMIT
+        JSONObject json = getOrNull(api + "/search?limit=" + SEARCH_LIMIT
                 + "&q=" + URLEncoder.encode(q, "UTF-8"));
         JSONArray data = json != null ? json.optJSONArray("data") : null;
         if (data == null) return null;

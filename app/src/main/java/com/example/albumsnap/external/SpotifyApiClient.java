@@ -42,9 +42,16 @@ public class SpotifyApiClient {
     }
 
     private final SpotifyAuthService auth;
+    private final String baseUrl;
 
     public SpotifyApiClient(SpotifyAuthService auth) {
+        this(auth, BASE_URL);
+    }
+
+    /** So para testes: aponta o cliente para um servidor local. */
+    SpotifyApiClient(SpotifyAuthService auth, String baseUrl) {
         this.auth = auth;
+        this.baseUrl = baseUrl;
     }
 
     /** GET; "pathAndQuery" comeca por "/" (ex.: "/albums/123"). */
@@ -90,7 +97,7 @@ public class SpotifyApiClient {
     private String request(String method, String pathAndQuery, byte[] body) throws IOException {
         String token = auth.getAccessToken();
 
-        HttpURLConnection conn = (HttpURLConnection) new URL(BASE_URL + pathAndQuery).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) new URL(baseUrl + pathAndQuery).openConnection();
         try {
             conn.setRequestMethod(method);
             conn.setConnectTimeout(10000);

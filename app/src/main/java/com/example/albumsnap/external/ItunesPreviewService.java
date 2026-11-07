@@ -20,13 +20,24 @@ public class ItunesPreviewService implements PreviewService {
     private static final String SEARCH_URL = "https://itunes.apple.com/search";
     private static final int SEARCH_LIMIT = 25;
 
+    private final String searchUrl;
+
+    public ItunesPreviewService() {
+        this(SEARCH_URL);
+    }
+
+    /** So para testes: aponta o servico para um servidor local. */
+    ItunesPreviewService(String searchUrl) {
+        this.searchUrl = searchUrl;
+    }
+
     @Override
     public String findPreviewUrl(PreviewQuery query) throws IOException {
         String title = PreviewMatcher.cleanTitle(query.getTitle());
         if (title.isEmpty()) return null;
 
         String term = (query.getPrimaryArtist() + " " + title).trim();
-        JSONObject json = JsonHttp.get(SEARCH_URL + "?media=music&entity=song&limit=" + SEARCH_LIMIT
+        JSONObject json = JsonHttp.get(searchUrl + "?media=music&entity=song&limit=" + SEARCH_LIMIT
                 + "&term=" + URLEncoder.encode(term, "UTF-8"));
         JSONArray results = json.optJSONArray("results");
         if (results == null) return null;

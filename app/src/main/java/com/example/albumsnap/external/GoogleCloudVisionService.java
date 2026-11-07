@@ -35,12 +35,17 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
     private static final String TAG = "GoogleCloudVisionService";
     private static final String API_KEY = BuildConfig.VISION_API_KEY;
 
-    // Um so cliente para a app toda: cada OkHttpClient tem o seu proprio pool de ligacoes e threads
-    private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .build();
+    /**
+     * Um so cliente para a app toda (cada OkHttpClient tem o seu proprio pool de ligacoes e threads),
+     * criado so na primeira chamada de rede: as funcoes que apenas leem o JSON nao o chegam a criar.
+     */
+    private static final class Http {
+        static final OkHttpClient CLIENT = new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build();
+    }
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate?key=" + API_KEY;
 
     // Lado maior da imagem enviada (so se reduz, nunca se amplia) e parte central usada
@@ -80,7 +85,7 @@ public class GoogleCloudVisionService implements ImageRecognitionService {
                         .post(body)
                         .build();
 
-                try (Response response = CLIENT.newCall(request).execute()) {
+                try (Response response = Http.CLIENT.newCall(request).execute()) {
                     if (response.isSuccessful()) {
                         // response.body() é garantido não ser nulo quando response.isSuccessful() é true
                         String result = response.body().string();

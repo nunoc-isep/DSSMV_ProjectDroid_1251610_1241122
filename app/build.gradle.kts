@@ -46,6 +46,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    testOptions {
+        unitTests {
+            // android.util.Log e afins devolvem valores por omissao em vez de rebentar nos testes JVM
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -54,6 +60,8 @@ dependencies {
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     testImplementation("junit:junit:4.13.2")
+    // No JVM o org.json do Android e so um esqueleto: usa-se a implementacao real
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     implementation ("com.squareup.okhttp3:okhttp:5.5.1")
