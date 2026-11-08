@@ -41,13 +41,13 @@ public class ManifestTest {
     }
 
     @Test
-    public void cameraHardwareIsNotRequired_soTheAppInstallsEverywhere() throws Exception {
+    public void cameraHardwareIsRequired() throws Exception {
         NodeList features = manifest().getElementsByTagName("uses-feature");
 
         for (int i = 0; i < features.getLength(); i++) {
             Element f = (Element) features.item(i);
             if (f.getAttribute("android:name").equals("android.hardware.camera")) {
-                assertEquals("false", f.getAttribute("android:required"));
+                assertEquals("true", f.getAttribute("android:required"));
                 return;
             }
         }
