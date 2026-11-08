@@ -7,7 +7,6 @@ import android.util.Log;
 import androidx.annotation.StringRes;
 
 import com.example.albumsnap.R;
-import com.example.albumsnap.dto.VisionResponseDTO;
 import com.example.albumsnap.external.GoogleCloudVisionService;
 import com.example.albumsnap.external.SpotifyApiClient;
 import com.example.albumsnap.external.SpotifyAlbumRepository;
@@ -51,12 +50,20 @@ public class CameraController {
     }
 
     public CameraController(Context context) {
+        this(createSearchService(context), new GoogleCloudVisionService());
+    }
+
+    /** Para testes: com servicos falsos em vez do Spotify e da Cloud Vision. */
+    CameraController(AlbumSearchService albumSearchService, ImageRecognitionService imageRecognitionService) {
+        this.albumSearchService = albumSearchService;
+        this.imageRecognitionService = imageRecognitionService;
+    }
+
+    private static AlbumSearchService createSearchService(Context context) {
         SpotifyAuthService authService = SpotifyAuthManager.getInstance(context);
         SpotifyApiClient spotifyApiClient = new SpotifyApiClient(authService);
         AlbumRepository repository = new SpotifyAlbumRepository(spotifyApiClient);
-
-        this.albumSearchService = new SpotifyAlbumSearchService(spotifyApiClient, repository);
-        this.imageRecognitionService = new GoogleCloudVisionService();
+        return new SpotifyAlbumSearchService(spotifyApiClient, repository);
     }
 
     /** Cancela o processamento em curso: nenhum callback voltara a ser chamado. */
@@ -74,12 +81,10 @@ public class CameraController {
             @Override
             public void onSuccess(String jsonResult) {
                 if (cancelled) return;
-                // O JSON le-se uma so vez; as funcoes seguintes trabalham sobre o objeto ja lido
-                final VisionResponseDTO.AnnotateImageResponse vision = GoogleCloudVisionService.parseResponse(jsonResult);
-                final List<String> queries = GoogleCloudVisionService.parseSearchQueries(vision);
-                final List<String> spotifyIds = GoogleCloudVisionService.parseSpotifyAlbumIds(vision);
-                final Set<String> coverKeys = GoogleCloudVisionService.parseCoverKeys(vision);
-                Log.d(TAG, "vision: " + GoogleCloudVisionService.describeResponse(vision));
+                final List<String> queries = GoogleCloudVisionService.parseSearchQueries(jsonResult);
+                final List<String> spotifyIds = GoogleCloudVisionService.parseSpotifyAlbumIds(jsonResult);
+                final Set<String> coverKeys = GoogleCloudVisionService.parseCoverKeys(jsonResult);
+                Log.d(TAG, "vision: " + GoogleCloudVisionService.describeResponse(jsonResult));
                 Log.d(TAG, "queries=" + queries + " spotifyIds=" + spotifyIds + " coverKeys=" + coverKeys);
 
                 if (!queries.isEmpty() || !spotifyIds.isEmpty()) {

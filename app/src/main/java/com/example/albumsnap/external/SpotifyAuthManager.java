@@ -74,13 +74,24 @@ public class SpotifyAuthManager implements SpotifyAuthService {
 
     private final Context appContext;
     private final SharedPreferences prefs;
+    private final String tokenUrl;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final SecureRandom random = new SecureRandom();
 
     private SpotifyAuthManager(Context context) {
+        this(context, PREFS, TOKEN_URL);
+    }
+
+    private SpotifyAuthManager(Context context, String prefsName, String tokenUrl) {
         appContext = context.getApplicationContext();
-        prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        prefs = appContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
+        this.tokenUrl = tokenUrl;
+    }
+
+    /** So para testes: instancia isolada, com outro ficheiro de preferencias e outro URL de tokens. */
+    static SpotifyAuthManager createForTests(Context context, String prefsName, String tokenUrl) {
+        return new SpotifyAuthManager(context, prefsName, tokenUrl);
     }
 
     public static synchronized SpotifyAuthManager getInstance(Context context) {
@@ -154,7 +165,7 @@ public class SpotifyAuthManager implements SpotifyAuthService {
                     form.put("redirect_uri", REDIRECT_URI);
                     form.put("client_id", CLIENT_ID);
                     form.put("code_verifier", verifier);
-                    saveTokens(postForm(TOKEN_URL, form));
+                    saveTokens(postForm(tokenUrl, form));
                     postSuccess(callback);
                 } catch (Exception e) {
                     Log.w("SpotifyAuthManager", "Falha ao obter o token", e);
@@ -199,7 +210,7 @@ public class SpotifyAuthManager implements SpotifyAuthService {
         form.put("refresh_token", refresh);
         form.put("client_id", CLIENT_ID);
         try {
-            saveTokens(postForm(TOKEN_URL, form));
+            saveTokens(postForm(tokenUrl, form));
         } catch (IOException e) {
             throw e;
         } catch (Exception e) {

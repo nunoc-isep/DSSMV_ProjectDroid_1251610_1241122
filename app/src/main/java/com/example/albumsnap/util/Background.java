@@ -6,6 +6,7 @@ import android.os.Looper;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -23,6 +24,9 @@ public final class Background {
     private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
+    // Onde correm os callbacks: na UI thread. Os testes JVM (que nao tem UI thread) trocam-no.
+    private static volatile Executor callbackExecutor = command -> MAIN.post(command);
+
     private Background() {
     }
 
@@ -32,7 +36,7 @@ public final class Background {
             public void run() {
                 try {
                     final T result = task.call();
-                    MAIN.post(new Runnable() {
+                    callbackExecutor.execute(new Runnable() {
                         @Override
                         public void run() {
                             callback.onResult(result);
@@ -40,7 +44,7 @@ public final class Background {
                     });
                 } catch (final Exception e) {
                     final String message = describe(e);
-                    MAIN.post(new Runnable() {
+                    callbackExecutor.execute(new Runnable() {
                         @Override
                         public void run() {
                             callback.onError(message);
@@ -49,6 +53,16 @@ public final class Background {
                 }
             }
         });
+    }
+
+    /** So para testes JVM: os callbacks correm logo na thread de fundo (nao ha UI thread). */
+    public static void runCallbacksImmediatelyForTests() {
+        callbackExecutor = Runnable::run;
+    }
+
+    /** Repoe o normal: callbacks na UI thread. */
+    public static void restoreMainThreadCallbacks() {
+        callbackExecutor = command -> MAIN.post(command);
     }
 
     static String describe(Exception e) {
