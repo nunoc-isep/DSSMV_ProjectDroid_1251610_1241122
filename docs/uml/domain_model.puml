@@ -1,4 +1,4 @@
-@startuml AlbumSnapDomainModel
+@startuml
 
 title AlbumSnap - Domain Model
 
@@ -8,6 +8,8 @@ skinparam packageStyle rectangle
 skinparam classBackgroundColor #FDFDFD
 skinparam classBorderColor #444444
 skinparam ArrowColor #444444
+skinparam defaultFontSize 11
+hide empty members
 
 ' =========================
 ' USER AND ACCOUNT
@@ -16,7 +18,6 @@ class User {
 }
 
 class SpotifyAccount {
-  - spotifyUserId: String
   - accessToken: String
   - refreshToken: String
   - tokenExpiresAt: DateTime
@@ -49,7 +50,6 @@ class AlbumScan {
 
 class AlbumCoverPhoto {
   - capturedAt: DateTime
-  - imageUri: String
 }
 
 ' =========================
@@ -74,6 +74,8 @@ class Track {
   - title: String
   - durationMs: long
   - trackNumber: int
+  - discNumber: int
+  - isrc: String
 }
 
 class TrackPreview {
@@ -91,6 +93,11 @@ class LibraryEntry {
   - savedAt: DateTime
 }
 
+class Playlist {
+  - spotifyId: String
+  - name: String
+}
+
 ' =========================
 ' RELATIONSHIPS
 ' =========================
@@ -105,14 +112,18 @@ AlbumScan "0..*" --> "0..*" Album : candidates found
 AlbumScan "0..*" --> "0..1" Album : chosen album
 
 Album "0..*" -- "1..*" Artist : credited to
-Album "1" *-- "0..*" Track : contains
+Album "1" *-- "1..*" Track : contains
+Track "0..*" -- "1..*" Artist : performed by
 Track "1" -- "0..1" TrackPreview : has
 
 User "1" -- "1" Library : owns
 Library "1" *-- "0..*" LibraryEntry : stores
 LibraryEntry "0..*" --> "1" Album : refers to
 
-SpotifyAccount "0..*" -- "0..*" Album : favourites
+SpotifyAccount "0..*" -- "0..*" Album : saved albums
+SpotifyAccount "0..*" -- "0..*" Track : liked songs
+SpotifyAccount "1" -- "0..*" Playlist : owns or\ncollaborates on
+Playlist "0..*" -- "0..*" Track : receives
 
 note bottom of AlbumScan
   The 10 most recent scans (with a chosen album)
@@ -120,15 +131,22 @@ note bottom of AlbumScan
 end note
 
 note bottom of TrackPreview
-  Comes from Deezer, not Spotify,
-  because Spotify no longer returns
-  preview_url to new apps.
+  Comes from Deezer (looked up by ISRC) or,
+  if Deezer does not have the recording, from
+  iTunes. Since Nov 2024 Spotify restricts its own
+  30 s preview URLs for new apps.
+end note
+
+note right of Track
+  The ISRC identifies the exact recording.
+  It is only obtained when a preview is
+  requested (GET /tracks/{id}).
 end note
 
 note right of Library
   The Library is local to the app
   (SQLite) and independent from the
-  Spotify favourites.
+  Spotify account.
 end note
 
 @enduml

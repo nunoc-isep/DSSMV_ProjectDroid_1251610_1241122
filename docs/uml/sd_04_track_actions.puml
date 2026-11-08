@@ -1,0 +1,57 @@
+@startuml
+title Sequence - Add a track to a Spotify playlist or to Liked Songs
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 115
+skinparam ParticipantPadding 4
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+participant "Album\nActivity" as AA
+participant "Album\nController" as AC
+participant "Spotify\nPlaylistService" as PS
+participant "SpotifyFavourite\nTrackService" as FT
+participant "Spotify\nApiClient" as API
+participant "Spotify\nWeb API" as SA
+
+[-> AA : tap the menu of a track
+AA -> AA : onTrackMenuClick(track, anchor)\n// popup menu
+alt "Add to playlist"
+  AA -> AC : getEditablePlaylists(Callback)
+  AC -> PS : getEditablePlaylists()
+  PS -> API : get("/me") and get("/me/playlists?limit=50&offset=n")\n// at most 10 pages; token refreshed if expired
+  API -> SA : GET /me, GET /me/playlists
+  SA --> API : user id, playlists
+  PS --> AC : own or collaborative playlists
+  AC --> AA : onResult(playlists)
+  AA -> AA : showPlaylistPicker(track, playlists)
+  [-> AA : user chooses a playlist
+  AA -> AC : addTrackToPlaylist(playlistId, trackId, Callback)
+  AC -> PS : addTrack(playlistId, trackId)
+  PS -> API : post("/playlists/{id}/items",\n{"uris": ["spotify:track:..."]})
+  API -> SA : POST /playlists/{id}/items
+  SA --> API : 201 Created
+  AC --> AA : onResult(true)
+else "Add to Liked Songs"
+  AA -> AC : addTrackToSpotifyFavourites(trackId, Callback)
+  AC -> FT : addTrack(trackId)
+  FT -> API : saveToLibrary("spotify:track:{id}")
+  API -> SA : PUT /me/library?uris=...
+  opt HTTP 400
+    API -> SA : PUT /me/library with body {"uris": [...]}
+  end
+  SA --> API : success
+  AC --> AA : onResult(true)
+end
+alt failure (ApiException / IOException)
+  AC --> AA : onError(message)
+  AA -> AA : showToastError(ErrorMessages.localize(...))
+else success
+  AA -> AA : Toast with confirmation
+end
+@enduml

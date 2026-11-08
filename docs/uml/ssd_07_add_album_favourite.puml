@@ -1,0 +1,22 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: asks to add the album to Spotify favourites
+System -> Spotify: adds the album to the user's Spotify library
+alt accepted
+  Spotify --> System: confirms
+  System --> User: informs success and disables the button
+else rejected (400)
+  Spotify --> System: returns an error
+  System -> Spotify: retries with the alternative request format
+  Spotify --> System: confirms or returns an error
+  System --> User: informs success or the error
+end
+@enduml

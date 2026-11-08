@@ -1,0 +1,62 @@
+@startuml
+title AlbumSnap - Local storage (SQLite and preferences)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle folder
+skinparam defaultFontSize 11
+skinparam classBackgroundColor #FDFDFD
+skinparam classBorderColor #444444
+skinparam ArrowColor #444444
+skinparam nodesep 18
+skinparam ranksep 32
+hide empty members
+
+
+package "storage" {
+    class SqliteAlbumRepository {
+      + saveToLibrary(album: Album): void
+      + removeFromLibrary(spotifyId: String): void
+      + isInLibrary(spotifyId: String): boolean
+      + getLibrary(): List<Album>
+      + addRecentScan(album: Album): void
+      + getRecentScans(limit: int): List<Album>
+      - upsert(album: Album, extra: ContentValues): void
+    }
+    class AlbumDbHelper {
+      + {static} TABLE: String = "albums"
+      + onCreate(db: SQLiteDatabase): void
+      + onUpgrade(db: SQLiteDatabase, oldV: int, newV: int): void
+    }
+    class SettingsManager {
+      + {static} THEME_SYSTEM / THEME_LIGHT / THEME_DARK: String
+      + {static} LANGUAGE_SYSTEM / LANGUAGE_EN / LANGUAGE_PT: String
+      + {static} from(ctx: Context): SettingsManager
+      + getTheme(): String
+      + setTheme(theme: String): void
+      + getLanguage(): String
+      + setLanguage(language: String): void
+      + applyTheme(): void
+      + applyLanguage(): void
+      + applyAll(): void
+    }
+}
+class AlbumSnapApplication {
+  + onCreate(): void
+}
+interface LocalAlbumRepository #E4E4E4
+class SQLiteOpenHelper #E4E4E4
+class Application #E4E4E4
+class Album #E4E4E4
+class SettingsActivity #E4E4E4
+class LibraryController #E4E4E4
+class AlbumController #E4E4E4
+
+SqliteAlbumRepository --> AlbumDbHelper
+AlbumDbHelper --|> SQLiteOpenHelper
+SqliteAlbumRepository ..> Album
+AlbumSnapApplication --> SettingsManager : applyAll()
+AlbumSnapApplication --|> Application
+SettingsActivity --> SettingsManager
+LibraryController --> LocalAlbumRepository
+AlbumController --> LocalAlbumRepository
+@enduml

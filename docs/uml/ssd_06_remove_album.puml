@@ -1,0 +1,21 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System: asks to remove the album from the Library
+alt removed
+  System --> User: informs success and shows the Save to Library button
+else storage error
+  System --> User: informs the error
+end
+
+note right of System
+  If the album is in the Recent list,
+  it stays there.
+end note
+@enduml

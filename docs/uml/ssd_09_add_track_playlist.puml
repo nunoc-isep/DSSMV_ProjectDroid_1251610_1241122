@@ -1,0 +1,28 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: opens the menu of a track and chooses "Add to a playlist"
+System -> Spotify: requests the user's playlists
+Spotify --> System: returns the playlists
+alt there are playlists the user can edit (own or collaborative)
+  System --> User: shows the list of playlists
+  User -> System: chooses a playlist
+  System -> Spotify: adds the track to the playlist
+  alt accepted
+    Spotify --> System: confirms
+    System --> User: informs success
+  else rejected (e.g. missing permission)
+    Spotify --> System: returns an error
+    System --> User: informs the error
+  end
+else none
+  System --> User: informs that there are no playlists to add to
+end
+@enduml

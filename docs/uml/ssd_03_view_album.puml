@@ -18,10 +18,10 @@ else error (network, expired session, not found, rate limit)
 end
 
 note right of System
+  Albums with more than 50 tracks are fetched page by page.
   If opened from a scan, the album is also
   added to the Recent list.
   The Library button depends on whether the
   album is already saved.
 end note
-
 @enduml

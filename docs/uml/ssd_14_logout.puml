@@ -1,0 +1,17 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System: asks to log out
+System --> User: deletes the stored Spotify tokens and shows the login screen
+
+note right of System
+  The Library, recent scans and settings are kept.
+  Spotify itself is not contacted.
+end note
+@enduml

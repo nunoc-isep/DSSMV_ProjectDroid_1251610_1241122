@@ -1,7 +1,5 @@
-@startuml AlbumSnapClassDiagram
-
+@startuml
 title AlbumSnap - Class Diagram (as implemented)
-
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam packageStyle folder
@@ -9,303 +7,12 @@ skinparam defaultFontSize 11
 skinparam classBackgroundColor #FDFDFD
 skinparam classBorderColor #444444
 skinparam ArrowColor #444444
-skinparam nodesep 40
-skinparam ranksep 60
+skinparam nodesep 18
+skinparam ranksep 32
 hide empty members
 
-' =========================
-' APPLICATION
-' =========================
-class AlbumSnapApplication <<Application>> {
-  + onCreate(): void
-}
 
-' =========================
-' VIEWS
-' =========================
-package "views" {
-
-    class LoginActivity <<LoginView>> {
-      - auth: SpotifyAuthManager
-      + onCreate(): void
-      + onNewIntent(intent: Intent): void
-      - displayLogin(): void
-      - connectSpotify(): void
-      - showConnectionStatus(connected: boolean): void
-      - handleIntent(intent: Intent): void
-    }
-
-    class MainMenuActivity {
-      - controller: LibraryController
-      - recentAdapter: AlbumAdapter
-      - recentAlbums: List<Album>
-      - expanded: boolean
-      + onResume(): void
-      - loadRecent(): void
-      - renderRecent(): void
-      - setExpanded(value: boolean): void
-      - openAlbum(album: Album): void
-      - goToLogin(): void
-    }
-
-    class CameraActivity <<CameraView>> {
-      - cameraController: CameraController
-      - photoUri: Uri
-      - checkPermissionAndOpenCamera(): void
-      - openCamera(): void
-      - loadBitmapFromUri(uri: Uri): Bitmap
-      - processImage(bitmap: Bitmap): void
-      - showAlbumBottomSheet(albums: List<Album>): void
-      - openAlbumDetails(album: Album): void
-    }
-
-    class AlbumActivity <<AlbumView>> {
-      + {static} EXTRA_SPOTIFY_ID: String
-      + {static} EXTRA_FROM_SCAN: String
-      - controller: AlbumController
-      - album: Album
-      - inLibrary: boolean
-      - previewPlayer: PreviewPlayer
-      - previewTrackId: String
-      - previewUrls: Map<String,String>
-      - loadAlbum(): void
-      - displayAlbum(album: Album): void
-      - toggleLibrary(): void
-      - addToSpotifyFavourites(): void
-      - onPreviewClick(track: Track): void
-      - stopPreview(): void
-    }
-
-    class LibraryActivity {
-      - controller: LibraryController
-      - adapter: AlbumAdapter
-      + onResume(): void
-      - openAlbum(album: Album): void
-    }
-
-    class SettingsActivity {
-      - settings: SettingsManager
-      - logout(): void
-    }
-}
-
-package "views.adapters" {
-    class AlbumAdapter {
-      + setItems(albums: List<Album>): void
-      + getView(position: int, v: View, p: ViewGroup): View
-    }
-    interface "AlbumAdapter.Listener" as AlbumAdapterListener {
-      + onInfoClicked(album: Album): void
-    }
-    class TrackAdapter {
-      - previewTrackId: String
-      - previewState: PreviewState
-      + setItems(tracks: List<Track>): void
-      + setPreviewState(trackId: String, state: PreviewState): void
-    }
-    enum PreviewState {
-      IDLE
-      LOADING
-      PLAYING
-    }
-}
-
-' =========================
-' CONTROLLERS
-' =========================
-package "controllers" {
-
-    class CameraController {
-      - albumSearchService: AlbumSearchService
-      - imageRecognitionService: ImageRecognitionService
-      + processCapturedImage(photo: Bitmap, cb: CameraCallback): void
-    }
-
-    interface "CameraController.CameraCallback" as CameraCallback {
-      + onStatusUpdate(statusRes: int): void
-      + onAlbumsRecognized(albums: List<Album>): void
-      + onError(messageRes: int, detail: String): void
-    }
-
-    class AlbumController {
-      - remoteRepository: AlbumRepository
-      - searchService: AlbumSearchService
-      - favouriteService: FavouriteAlbumService
-      - localRepository: LocalAlbumRepository
-      - previewService: PreviewService
-      + {static} create(ctx: Context): AlbumController
-      + getAlbum(spotifyId: String, cb: Callback<Album>): void
-      + searchAlbums(query: String, cb: Callback<List<Album>>): void
-      + registerScan(album: Album): void
-      + isInLibrary(spotifyId: String, cb: Callback<Boolean>): void
-      + saveToLibrary(album: Album, cb: Callback<Boolean>): void
-      + removeFromLibrary(spotifyId: String, cb: Callback<Boolean>): void
-      + addToSpotifyFavourites(spotifyId: String, cb: Callback<Boolean>): void
-      + getPreviewUrl(album: Album, track: Track, cb: Callback<String>): void
-    }
-
-    class LibraryController {
-      - {static} RECENT_LIMIT: int = 10
-      - localRepository: LocalAlbumRepository
-      + {static} create(ctx: Context): LibraryController
-      + getLibraryAlbums(cb: Callback<List<Album>>): void
-      + getRecentScans(cb: Callback<List<Album>>): void
-    }
-}
-
-' =========================
-' SERVICES (contracts)
-' =========================
-package "services" {
-
-    interface ImageRecognitionService {
-      + analyzeImage(bitmap: Bitmap, cb: VisionCallback): void
-    }
-
-    interface AlbumSearchService {
-      + searchAlbums(query: String): List<Album>
-      + getAlbumDetails(spotifyId: String): Album
-    }
-
-    interface SpotifyAuthService {
-      + authorize(): void
-      + getAccessToken(): String
-      + isAuthenticated(): boolean
-      + disconnect(): void
-    }
-
-    interface FavouriteAlbumService {
-      + addAlbum(spotifyId: String): void
-    }
-
-    interface PreviewService {
-      + findPreviewUrl(artist: String, title: String): String
-      + fetchAlbumPreviews(artist: String, albumTitle: String): Map<String,String>
-    }
-}
-
-' =========================
-' REPOSITORIES (contracts)
-' =========================
-package "repository" {
-
-    interface AlbumRepository {
-      + findBySpotifyId(spotifyId: String): Album
-      + save(album: Album): void
-    }
-
-    interface LocalAlbumRepository {
-      + saveToLibrary(album: Album): void
-      + removeFromLibrary(spotifyId: String): void
-      + isInLibrary(spotifyId: String): boolean
-      + getLibrary(): List<Album>
-      + addRecentScan(album: Album): void
-      + getRecentScans(limit: int): List<Album>
-    }
-}
-
-' =========================
-' EXTERNAL (remote implementations)
-' =========================
-package "external" {
-
-    class GoogleCloudVisionService {
-      - {static} VISION_URL: String
-      + analyzeImage(bitmap: Bitmap, cb: VisionCallback): void
-      + {static} parseDetectedText(json: String): String
-      - cropCenter(src: Bitmap): Bitmap
-      - buildRequestBodyJson(base64: String): JSONObject
-    }
-
-    class SpotifyAuthManager {
-      + {static} CLIENT_ID: String
-      + {static} REDIRECT_URI: String
-      - prefs: SharedPreferences
-      + {static} getInstance(ctx: Context): SpotifyAuthManager
-      + authorize(): void
-      + handleRedirect(data: Uri, cb: LoginCallback): boolean
-      + getAccessToken(): String
-      + refreshAccessToken(): String
-      + isAuthenticated(): boolean
-      + disconnect(): void
-    }
-
-    class SpotifyApiClient {
-      + {static} BASE_URL: String
-      - auth: SpotifyAuthService
-      + get(pathAndQuery: String): JSONObject
-      + put(pathAndQuery: String, body: JSONObject): void
-    }
-
-    class "SpotifyApiClient.ApiException" as ApiException {
-      - status: int
-      + getStatus(): int
-    }
-
-    class SpotifyAlbumSearchService {
-      - {static} MAX_RESULTS: int = 10
-      - client: SpotifyApiClient
-      - repository: AlbumRepository
-    }
-
-    class SpotifyAlbumRepository {
-      - client: SpotifyApiClient
-      - favouriteService: FavouriteAlbumService
-    }
-
-    class SpotifyFavouriteAlbumService {
-      - client: SpotifyApiClient
-    }
-
-    class DeezerPreviewService {
-      - {static} SEARCH_URL: String
-      + {static} cleanTitle(title: String): String
-      + {static} normalize(text: String): String
-    }
-
-    class AlbumMapper <<package-private>> {
-      ~ {static} toDomain(dto: AlbumDTO): Album
-      ~ {static} toDomainTracks(dtos: List<TrackDTO>): List<Track>
-    }
-}
-
-' =========================
-' STORAGE (local implementations)
-' =========================
-package "storage" {
-
-    class SqliteAlbumRepository {
-      - {static} MAX_RECENT: int = 10
-      - helper: AlbumDbHelper
-      - upsert(album: Album, extra: ContentValues): void
-    }
-
-    class AlbumDbHelper {
-      - {static} DB_NAME: String = "albumsnap.db"
-      + onCreate(db: SQLiteDatabase): void
-      + onUpgrade(db: SQLiteDatabase, o: int, n: int): void
-    }
-
-    class SettingsManager {
-      + {static} THEME_SYSTEM|LIGHT|DARK: String
-      + {static} LANGUAGE_SYSTEM|EN|PT: String
-      - prefs: SharedPreferences
-      + {static} from(ctx: Context): SettingsManager
-      + getTheme(): String
-      + setTheme(theme: String): void
-      + getLanguage(): String
-      + setLanguage(lang: String): void
-      + applyTheme(): void
-      + applyLanguage(): void
-      + applyAll(): void
-    }
-}
-
-' =========================
-' MODEL
-' =========================
 package "model" {
-
     class Album {
       - spotifyId: String
       - title: String
@@ -319,24 +26,35 @@ package "model" {
       + getReleaseYear(): String
       + setTracks(tracks: List<Track>): void
     }
-
     class Artist {
       - spotifyId: String
       - name: String
     }
-
     class Track {
       - spotifyId: String
       - title: String
       - durationMs: long
       - trackNumber: int
+      - discNumber: int
+      - artists: List<Artist>
+    }
+    class Playlist {
+      - spotifyId: String
+      - name: String
+    }
+    class PreviewQuery {
+      - isrc: String
+      - title: String
+      - artists: List<String>
+      - albumTitle: String
+      - durationMs: long
+      + getPrimaryArtist(): String
     }
 }
-
-' =========================
-' DTO
-' =========================
 package "dto" {
+    class JsonUtil <<package-private>> {
+      ~ {static} str(o: JSONObject, key: String): String
+    }
     class AlbumDTO {
       - id: String
       - name: String
@@ -347,37 +65,239 @@ package "dto" {
       + {static} fromJson(o: JSONObject): AlbumDTO
       + {static} tracksFromItems(items: JSONArray): List<TrackDTO>
     }
-    class ArtistDTO {
-      - id: String
-      - name: String
-      + {static} fromJson(o: JSONObject): ArtistDTO
-    }
     class TrackDTO {
       - id: String
       - name: String
       - durationMs: long
       - trackNumber: int
+      - discNumber: int
       + {static} fromJson(o: JSONObject): TrackDTO
+    }
+    class ArtistDTO {
+      - id: String
+      - name: String
+      + {static} fromJson(o: JSONObject): ArtistDTO
     }
     class VisionResponseDTO {
       - responses: List<AnnotateImageResponse>
     }
-}
-
-' =========================
-' UTIL
-' =========================
-package "util" {
-    class Background <<utility>> {
-      + {static} run(task: Task<T>, cb: Callback<T>): void
+    class AnnotateImageResponse {
+      - fullTextAnnotation: FullTextAnnotation
+      - webDetection: WebDetection
     }
-    interface "Callback<T>" as Callback {
-      + onResult(result: T): void
+    class FullTextAnnotation {
+      - text: String
+    }
+    class WebDetection {
+      - webEntities: List<WebEntity>
+      - bestGuessLabels: List<BestGuessLabel>
+      - pagesWithMatchingImages: List<WebPage>
+      - fullMatchingImages: List<WebImage>
+      - partialMatchingImages: List<WebImage>
+    }
+    class WebEntity {
+      - description: String
+      - score: float
+    }
+    class BestGuessLabel {
+      - label: String
+    }
+    class WebPage {
+      - url: String
+      - pageTitle: String
+      - fullMatchingImages: List<WebImage>
+      - partialMatchingImages: List<WebImage>
+    }
+    class WebImage {
+      - url: String
+    }
+}
+package "external" {
+    class AlbumMapper <<package-private>> {
+      ~ {static} toDomain(dto: AlbumDTO): Album
+      ~ {static} toDomainTracks(dtos: List<TrackDTO>): List<Track>
+    }
+    class GoogleCloudVisionService {
+      + analyzeImage(bitmap: Bitmap, cb: VisionCallback): void
+      + {static} parseSearchQueries(json: String): List<String>
+      + {static} parseSpotifyAlbumIds(json: String): List<String>
+      + {static} parseCoverKeys(json: String): Set<String>
+      + {static} describeResponse(json: String): String
+      - buildRequestBodyJson(base64: String): JSONObject
+      - prepareForUpload(src: Bitmap): Bitmap
+    }
+    class SpotifyAlbumSearchService {
+      + searchAlbums(query: String): List<Album>
+      + getAlbumDetails(spotifyId: String): Album
+    }
+    class SpotifyTrackInfoService {
+      + getIsrc(trackSpotifyId: String): String
+    }
+    class DeezerPreviewService {
+      + findPreviewUrl(query: PreviewQuery): String
+      - searchBest(q: String, query: PreviewQuery): String
+      - getOrNull(address: String): JSONObject
+    }
+    class ItunesPreviewService {
+      + findPreviewUrl(query: PreviewQuery): String
+    }
+    class CompositePreviewService {
+      + CompositePreviewService(sources: PreviewService...)
+      + findPreviewUrl(query: PreviewQuery): String
+    }
+    class JsonHttp <<package-private>> {
+      ~ {static} get(address: String): JSONObject
+      ~ {static} text(o: JSONObject, key: String): String
+      ~ {static} secure(url: String): String
+    }
+    class SpotifyAuthManager {
+      + {static} CLIENT_ID: String
+      + {static} REDIRECT_URI: String = "albumsnap://callback"
+      + {static} getInstance(ctx: Context): SpotifyAuthManager
+      + authorize(): void
+      + handleRedirect(data: Uri, cb: LoginCallback): boolean
+      + isAuthenticated(): boolean
+      + getAccessToken(): String
+      + refreshAccessToken(): String
+      + disconnect(): void
+      ~ {static} challengeFor(verifier: String): String
+    }
+    interface "SpotifyAuthManager.LoginCallback" as LoginCallback {
+      + onSuccess(): void
       + onError(message: String): void
     }
+    class SpotifyApiClient {
+      + {static} BASE_URL: String = "https://api.spotify.com/v1"
+      + get(pathAndQuery: String): JSONObject
+      + post(pathAndQuery: String, body: JSONObject): void
+      + put(pathAndQuery: String, body: JSONObject): void
+      + saveToLibrary(uri: String): void
+      - request(method: String, path: String, body: byte[]): String
+    }
+    class "SpotifyApiClient.ApiException" as ApiException {
+      + getStatus(): int
+    }
+    class SpotifyAlbumRepository {
+      + findBySpotifyId(spotifyId: String): Album
+    }
+    class SpotifyFavouriteAlbumService {
+      + addAlbum(spotifyId: String): void
+    }
+    class SpotifyFavouriteTrackService {
+      + addTrack(spotifyId: String): void
+    }
+    class SpotifyPlaylistService {
+      + getEditablePlaylists(): List<Playlist>
+      + addTrack(playlistId: String, trackId: String): void
+    }
+}
+package "services" {
+    interface AlbumSearchService {
+      + searchAlbums(query: String): List<Album>
+      + getAlbumDetails(spotifyId: String): Album
+    }
+    interface ImageRecognitionService {
+      + analyzeImage(bitmap: Bitmap, cb: VisionCallback): void
+    }
+    interface "ImageRecognitionService.VisionCallback" as VisionCallback {
+      + onSuccess(jsonResult: String): void
+      + onError(e: Exception): void
+    }
+    interface SpotifyAuthService {
+      + authorize(): void
+      + getAccessToken(): String
+      + isAuthenticated(): boolean
+      + disconnect(): void
+    }
+    interface FavouriteAlbumService {
+      + addAlbum(spotifyId: String): void
+    }
+    interface FavouriteTrackService {
+      + addTrack(spotifyId: String): void
+    }
+    interface PlaylistService {
+      + getEditablePlaylists(): List<Playlist>
+      + addTrack(playlistId: String, trackId: String): void
+    }
+    interface TrackInfoService {
+      + getIsrc(trackSpotifyId: String): String
+    }
+    interface PreviewService {
+      + findPreviewUrl(query: PreviewQuery): String
+    }
+}
+package "repository" {
+    interface AlbumRepository {
+      + findBySpotifyId(spotifyId: String): Album
+    }
+    interface LocalAlbumRepository {
+      + saveToLibrary(album: Album): void
+      + removeFromLibrary(spotifyId: String): void
+      + isInLibrary(spotifyId: String): boolean
+      + getLibrary(): List<Album>
+      + addRecentScan(album: Album): void
+      + getRecentScans(limit: int): List<Album>
+    }
+}
+package "controllers" {
+    class CameraController {
+      + CameraController(ctx: Context)
+      ~ CameraController(search: AlbumSearchService, vision: ImageRecognitionService)
+      + processCapturedImage(photo: Bitmap, cb: CameraCallback): void
+      + cancel(): void
+      - searchAndRank(queries: List<String>, ids: List<String>, keys: Set<String>): Outcome
+    }
+    interface "CameraController.CameraCallback" as CameraCallback {
+      + onStatusUpdate(statusRes: int): void
+      + onAlbumsRecognized(albums: List<Album>): void
+      + onError(messageRes: int, detail: String): void
+    }
+    class AlbumController {
+      + {static} create(ctx: Context): AlbumController
+      + getAlbum(id: String, cb: Callback<Album>): void
+      + registerScan(album: Album): void
+      + isInLibrary(id: String, cb: Callback<Boolean>): void
+      + saveToLibrary(album: Album, cb: Callback<Boolean>): void
+      + removeFromLibrary(id: String, cb: Callback<Boolean>): void
+      + addToSpotifyFavourites(id: String, cb: Callback<Boolean>): void
+      + addTrackToSpotifyFavourites(id: String, cb: Callback<Boolean>): void
+      + getEditablePlaylists(cb: Callback<List<Playlist>>): void
+      + addTrackToPlaylist(pl: String, track: String, cb: Callback<Boolean>): void
+      + getPreviewUrl(album: Album, track: Track, cb: Callback<String>): void
+    }
+    class LibraryController {
+      + {static} create(ctx: Context): LibraryController
+      + getLibraryAlbums(cb: Callback<List<Album>>): void
+      + getRecentScans(cb: Callback<List<Album>>): void
+    }
+}
+package "util" {
+    class SearchQuery <<utility>> {
+      + {static} clean(raw: String): String
+      + {static} isGeneric(cleaned: String): boolean
+      + {static} isMeaningfulText(cleaned: String): boolean
+      + {static} fromPageTitle(title: String): String
+      + {static} isMusicSite(url: String): boolean
+      + {static} spotifyAlbumId(url: String): String
+      + {static} spotifyCoverKey(url: String): String
+      + {static} firstWords(text: String, n: int): String
+      + {static} wordCount(text: String): int
+    }
+    class AlbumMatcher <<utility>> {
+      + {static} CONFIDENT_SCORE: double = 0.95
+      + {static} CONFIDENT_GAP: double = 0.30
+      + {static} rank(albums: List<Album>, queries: List<String>): List<Album>
+      + {static} isConfident(ranked: List<Album>, queries: List<String>): boolean
+      + {static} score(album: Album, queries: List<String>): double
+    }
+    class PreviewMatcher <<utility>> {
+      + {static} DURATION_TOLERANCE_MS: long = 5000
+      + {static} score(query: PreviewQuery, title: String, artist: String,\n    album: String, durationMs: long): int
+      + {static} isMatch(query: PreviewQuery, title: String,\n    artist: String, durationMs: long): boolean
+      + {static} cleanTitle(title: String): String
+      + {static} normalize(text: String): String
+    }
     class PreviewPlayer {
-      - player: MediaPlayer
-      - isPaused: boolean
       + play(url: String): void
       + pause(): void
       + stop(): void
@@ -385,137 +305,274 @@ package "util" {
       + isPlaying(): boolean
       + isPaused(): boolean
     }
-    class ImageLoader <<utility>> {
-      + {static} load(url: String, target: ImageView, placeholder: int, size: int): void
+    interface "PreviewPlayer.Listener" as PlayerListener {
+      + onPlaying(): void
+      + onPaused(): void
+      + onFinished(): void
+      + onError(): void
     }
     class ErrorMessages <<utility>> {
-      + {static} localize(ctx: Context, message: String): String
+      + {static} NETWORK: String
+      + {static} NO_SESSION: String
+      + {static} SESSION_EXPIRED: String
+      + {static} SPOTIFY_FORBIDDEN: String
+      + {static} SPOTIFY_NOT_FOUND: String
+      + {static} SPOTIFY_RATE_LIMIT: String
       + {static} spotifyHttp(status: int): String
+      + {static} localize(ctx: Context, message: String): String
+    }
+    class Background <<utility>> {
+      + {static} run(task: Task<T>, cb: Callback<T>): void
+    }
+    interface "Callback<T>" as CallbackI {
+      + onResult(result: T): void
+      + onError(message: String): void
+    }
+    class ImageLoader <<utility>> {
+      + {static} load(url: String, target: ImageView, placeholder: int, sizePx: int): void
     }
     class EdgeInsets <<utility>> {
       + {static} applyTo(root: View): void
     }
 }
+package "storage" {
+    class SqliteAlbumRepository {
+      + saveToLibrary(album: Album): void
+      + removeFromLibrary(spotifyId: String): void
+      + isInLibrary(spotifyId: String): boolean
+      + getLibrary(): List<Album>
+      + addRecentScan(album: Album): void
+      + getRecentScans(limit: int): List<Album>
+      - upsert(album: Album, extra: ContentValues): void
+    }
+    class AlbumDbHelper {
+      + {static} TABLE: String = "albums"
+      + onCreate(db: SQLiteDatabase): void
+      + onUpgrade(db: SQLiteDatabase, oldV: int, newV: int): void
+    }
+    class SettingsManager {
+      + {static} THEME_SYSTEM / THEME_LIGHT / THEME_DARK: String
+      + {static} LANGUAGE_SYSTEM / LANGUAGE_EN / LANGUAGE_PT: String
+      + {static} from(ctx: Context): SettingsManager
+      + getTheme(): String
+      + setTheme(theme: String): void
+      + getLanguage(): String
+      + setLanguage(language: String): void
+      + applyTheme(): void
+      + applyLanguage(): void
+      + applyAll(): void
+    }
+}
+package "views" {
+    class LoginActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onNewIntent(intent: Intent): void
+      - displayLogin(): void
+      - connectSpotify(): void
+      - showConnectionStatus(connected: boolean): void
+      - handleIntent(intent: Intent): void
+    }
+    class MainMenuActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onResume(): void
+      - loadRecent(): void
+      - setExpanded(value: boolean): void
+      - renderRecent(): void
+      - openAlbum(album: Album): void
+      - goToLogin(): void
+    }
+    class CameraActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onSaveInstanceState(outState: Bundle): void
+      - checkPermissionAndOpenCamera(): void
+      - openCamera(): void
+      - deleteTempPhoto(): void
+      - purgeOldPhotos(): void
+      - deleteMatching(dir: File): void
+      - loadBitmapFromUri(uri: Uri): Bitmap
+      - applyExifRotation(bitmap: Bitmap, uri: Uri): Bitmap
+      - isActivityAlive(): boolean
+      - leaveScreen(): void
+      # onDestroy(): void
+      - processImage(bitmap: Bitmap): void
+      - showAlbumBottomSheet(albums: List<Album>): void
+      - openAlbumDetails(album: Album): void
+    }
+    class AlbumActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      - loadAlbum(): void
+      - displayAlbum(a: Album): void
+      - buildInfoLine(a: Album): String
+      - typeLabel(albumType: String): String
+      - updateLibraryButton(): void
+      - toggleLibrary(): void
+      - addToSpotifyFavourites(): void
+      - onTrackMenuClick(track: Track, anchor: View): void
+      - addTrackToFavourites(track: Track): void
+      - chooseAndAddToPlaylist(track: Track): void
+      - showPlaylistPicker(track: Track, playlists: List<Playlist>): void
+      - addTrackToPlaylist(track: Track, playlist: Playlist, playlistName: String): void
+      - showToastError(message: String): void
+      - onPreviewClick(track: Track): void
+      - startPreview(url: String): void
+      - stopPreview(): void
+      # onStop(): void
+      # onDestroy(): void
+      - showError(message: String): void
+    }
+    class LibraryActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onResume(): void
+      - openAlbum(album: Album): void
+    }
+    class SettingsActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      - logout(): void
+      - {static} themeToId(theme: String): int
+      - {static} idToTheme(id: int): String
+      - {static} languageToId(language: String): int
+      - {static} idToLanguage(id: int): String
+    }
+}
+package "views.adapters" {
+    class AlbumAdapter {
+      + setItems(items: List<Album>): void
+      + getView(pos: int, v: View, parent: ViewGroup): View
+    }
+    interface "AlbumAdapter.Listener" as AlbumListener {
+      + onInfoClicked(album: Album): void
+    }
+    class TrackAdapter {
+      + setItems(tracks: List<Track>): void
+      + setOnPreviewClickListener(l: OnPreviewClickListener): void
+      + setOnTrackMenuClickListener(l: OnTrackMenuClickListener): void
+      + setPreviewState(trackId: String, state: PreviewState): void
+      + getView(pos: int, v: View, parent: ViewGroup): View
+    }
+    enum PreviewState {
+      IDLE
+      LOADING
+      PLAYING
+    }
+    interface OnPreviewClickListener {
+      + onPreviewClick(track: Track): void
+    }
+    interface OnTrackMenuClickListener {
+      + onTrackMenuClick(track: Track, anchor: View): void
+    }
+}
+class AlbumSnapApplication {
+  + onCreate(): void
+}
 
-' =========================
-' REALIZATIONS
-' =========================
+class IOException #E4E4E4
+class SQLiteOpenHelper #E4E4E4
+class Application #E4E4E4
+
+Album "1" *-- "0..*" Track
+Album "0..*" o-- "1..*" Artist
+Track "0..*" o-- "0..*" Artist
+AlbumDTO "1" o-- "0..*" ArtistDTO
+AlbumDTO "1" o-- "0..*" TrackDTO
+TrackDTO "1" o-- "0..*" ArtistDTO
+AlbumDTO ..> JsonUtil
+TrackDTO ..> JsonUtil
+ArtistDTO ..> JsonUtil
+AlbumMapper ..> AlbumDTO
+AlbumMapper ..> TrackDTO
+AlbumMapper ..> Album
+AlbumMapper ..> Track
+VisionResponseDTO "1" *-- "0..*" AnnotateImageResponse
+AnnotateImageResponse "1" *-- "0..1" FullTextAnnotation
+AnnotateImageResponse "1" *-- "0..1" WebDetection
+WebDetection "1" *-- "0..*" WebEntity
+WebDetection "1" *-- "0..*" BestGuessLabel
+WebDetection "1" *-- "0..*" WebPage
+WebDetection "1" *-- "0..*" WebImage
+WebPage "1" *-- "0..*" WebImage
+ImageRecognitionService +-- VisionCallback
 GoogleCloudVisionService ..|> ImageRecognitionService
 SpotifyAlbumSearchService ..|> AlbumSearchService
 SpotifyAuthManager ..|> SpotifyAuthService
 SpotifyFavouriteAlbumService ..|> FavouriteAlbumService
+SpotifyFavouriteTrackService ..|> FavouriteTrackService
+SpotifyPlaylistService ..|> PlaylistService
+SpotifyTrackInfoService ..|> TrackInfoService
+DeezerPreviewService ..|> PreviewService
+ItunesPreviewService ..|> PreviewService
+CompositePreviewService ..|> PreviewService
 SpotifyAlbumRepository ..|> AlbumRepository
 SqliteAlbumRepository ..|> LocalAlbumRepository
-DeezerPreviewService ..|> PreviewService
-ApiException --|> java.io.IOException
-SpotifyApiClient +-- ApiException
 CameraController +-- CameraCallback
-AlbumAdapter +-- AlbumAdapterListener
-TrackAdapter +-- PreviewState
-
-' =========================
-' VIEW -> CONTROLLER / ADAPTERS
-' =========================
+CameraController --> ImageRecognitionService
+CameraController --> AlbumSearchService
+CameraController ..> GoogleCloudVisionService : parse*()
+CameraController ..> SearchQuery
+CameraController ..> AlbumMatcher
+GoogleCloudVisionService ..> SearchQuery
+GoogleCloudVisionService ..> VisionResponseDTO
+SpotifyAlbumSearchService --> SpotifyApiClient
+SpotifyAlbumSearchService --> AlbumRepository
+SpotifyAlbumSearchService ..> AlbumMapper
+AlbumMatcher ..> Album
+CameraActivity --> CameraController
+CompositePreviewService "1" o-- "1..*" PreviewService : sources\n(Deezer, iTunes)
+DeezerPreviewService ..> JsonHttp
+ItunesPreviewService ..> JsonHttp
+DeezerPreviewService ..> PreviewMatcher
+ItunesPreviewService ..> PreviewMatcher
+DeezerPreviewService ..> PreviewQuery
+ItunesPreviewService ..> PreviewQuery
+SpotifyTrackInfoService --> SpotifyApiClient
+PreviewPlayer +-- PlayerListener
+PreviewPlayer --> PlayerListener
+AlbumController --> PreviewService
+AlbumController --> TrackInfoService
+AlbumActivity --> PreviewPlayer
+SpotifyAuthManager +-- LoginCallback
+SpotifyApiClient +-- ApiException
+ApiException --|> IOException
+SpotifyApiClient --> SpotifyAuthService : access token
+SpotifyAlbumRepository --> SpotifyApiClient
+SpotifyFavouriteAlbumService --> SpotifyApiClient
+SpotifyFavouriteTrackService --> SpotifyApiClient
+SpotifyPlaylistService --> SpotifyApiClient
+SpotifyAlbumRepository ..> AlbumMapper
+SpotifyPlaylistService ..> Playlist
+LoginActivity --> SpotifyAuthManager
+SqliteAlbumRepository --> AlbumDbHelper
+AlbumDbHelper --|> SQLiteOpenHelper
+SqliteAlbumRepository ..> Album
+AlbumSnapApplication --> SettingsManager : applyAll()
+AlbumSnapApplication --|> Application
+SettingsActivity --> SettingsManager
+LibraryController --> LocalAlbumRepository
+AlbumController --> LocalAlbumRepository
+LoginActivity ..> MainMenuActivity : on success
+MainMenuActivity ..> CameraActivity : scan
+MainMenuActivity ..> LibraryActivity
+MainMenuActivity ..> SettingsActivity
+MainMenuActivity ..> AlbumActivity : recent
+LibraryActivity ..> AlbumActivity
+CameraActivity ..> AlbumActivity : recognised
+SettingsActivity ..> LoginActivity : log out
 MainMenuActivity --> LibraryController
 LibraryActivity --> LibraryController
-CameraActivity --> CameraController
 AlbumActivity --> AlbumController
 MainMenuActivity --> AlbumAdapter
 LibraryActivity --> AlbumAdapter
-CameraActivity ..> AlbumAdapter
+CameraActivity --> AlbumAdapter : bottom sheet
 AlbumActivity --> TrackAdapter
-AlbumActivity --> PreviewPlayer
-AlbumActivity ..> ImageLoader
-AlbumActivity ..> ErrorMessages
-AlbumAdapter ..> ImageLoader
-
-' =========================
-' NAVIGATION (Intents)
-' =========================
-LoginActivity ..> MainMenuActivity : startActivity
-MainMenuActivity ..> LoginActivity : not authenticated
-MainMenuActivity ..> LibraryActivity : startActivity
-MainMenuActivity ..> SettingsActivity : startActivity
-MainMenuActivity ..> CameraActivity : startActivity
-MainMenuActivity ..> AlbumActivity : startActivity
-LibraryActivity ..> AlbumActivity : startActivity
-CameraActivity ..> AlbumActivity : startActivity(FROM_SCAN)
-SettingsActivity ..> LoginActivity : logout
-
-' =========================
-' VIEW -> AUTH / SETTINGS (direct)
-' =========================
-LoginActivity --> SpotifyAuthManager
-MainMenuActivity ..> SpotifyAuthManager : isAuthenticated()
-SettingsActivity --> SettingsManager
-SettingsActivity ..> SpotifyAuthManager : disconnect()
-AlbumSnapApplication ..> SettingsManager : applyAll()
-
-' =========================
-' CONTROLLER -> SERVICES / REPOSITORIES
-' =========================
-CameraController --> ImageRecognitionService
-CameraController --> AlbumSearchService
-CameraController ..> GoogleCloudVisionService : parseDetectedText()
-AlbumController --> AlbumRepository
-AlbumController --> AlbumSearchService
-AlbumController --> FavouriteAlbumService
-AlbumController --> LocalAlbumRepository
-AlbumController --> PreviewService
-LibraryController --> LocalAlbumRepository
+AlbumAdapter +-- AlbumListener
+TrackAdapter +-- PreviewState
+TrackAdapter +-- OnPreviewClickListener
+TrackAdapter +-- OnTrackMenuClickListener
 AlbumController ..> Background
 LibraryController ..> Background
-Background ..> Callback
-
-' =========================
-' EXTERNAL / STORAGE INTERNALS
-' =========================
-SpotifyApiClient --> SpotifyAuthService
-SpotifyAlbumSearchService --> SpotifyApiClient
-SpotifyAlbumSearchService --> AlbumRepository
-SpotifyAlbumRepository --> SpotifyApiClient
-SpotifyAlbumRepository --> FavouriteAlbumService
-SpotifyFavouriteAlbumService --> SpotifyApiClient
-SpotifyAlbumSearchService ..> AlbumMapper
-SpotifyAlbumRepository ..> AlbumMapper
-AlbumMapper ..> AlbumDTO
-AlbumMapper ..> Album
-AlbumDTO "1" o-- "0..*" ArtistDTO
-AlbumDTO "1" o-- "0..*" TrackDTO
-GoogleCloudVisionService ..> VisionResponseDTO
-SqliteAlbumRepository --> AlbumDbHelper
-
-' =========================
-' MODEL
-' =========================
-Album "1" *-- "0..*" Track
-Album "0..*" o-- "1..*" Artist
-AlbumAdapter ..> Album
-TrackAdapter ..> Track
-SqliteAlbumRepository ..> Album
-
-' =========================
-' EXTERNAL SYSTEM NOTES
-' =========================
-note right of GoogleCloudVisionService
-  Google Cloud Vision API
-  (OCR + web detection)
-end note
-
-note right of SpotifyAuthManager
-  Spotify OAuth 2.0
-  Authorization Code + PKCE
-  (redirect albumsnap://callback)
-end note
-
-note right of DeezerPreviewService
-  Deezer public search API
-  (30 s previews)
-end note
-
-note bottom of SqliteAlbumRepository
-  Single "albums" table with flags
-  in_library / last_scanned_at
-end note
-
+Background ..> CallbackI
+AlbumAdapter ..> ImageLoader
+AlbumController --> AlbumRepository
+AlbumController --> FavouriteAlbumService
+AlbumController --> FavouriteTrackService
+AlbumController --> PlaylistService
 @enduml

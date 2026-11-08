@@ -1,0 +1,114 @@
+@startuml
+title AlbumSnap - Presentation layer - activities and navigation
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle folder
+skinparam defaultFontSize 11
+skinparam classBackgroundColor #FDFDFD
+skinparam classBorderColor #444444
+skinparam ArrowColor #444444
+skinparam nodesep 18
+skinparam ranksep 32
+hide empty members
+
+
+package "views" {
+    class LoginActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onNewIntent(intent: Intent): void
+      - displayLogin(): void
+      - connectSpotify(): void
+      - showConnectionStatus(connected: boolean): void
+      - handleIntent(intent: Intent): void
+    }
+    class MainMenuActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onResume(): void
+      - loadRecent(): void
+      - setExpanded(value: boolean): void
+      - renderRecent(): void
+      - openAlbum(album: Album): void
+      - goToLogin(): void
+    }
+    class CameraActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onSaveInstanceState(outState: Bundle): void
+      - checkPermissionAndOpenCamera(): void
+      - openCamera(): void
+      - deleteTempPhoto(): void
+      - purgeOldPhotos(): void
+      - deleteMatching(dir: File): void
+      - loadBitmapFromUri(uri: Uri): Bitmap
+      - applyExifRotation(bitmap: Bitmap, uri: Uri): Bitmap
+      - isActivityAlive(): boolean
+      - leaveScreen(): void
+      # onDestroy(): void
+      - processImage(bitmap: Bitmap): void
+      - showAlbumBottomSheet(albums: List<Album>): void
+      - openAlbumDetails(album: Album): void
+    }
+    class AlbumActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      - loadAlbum(): void
+      - displayAlbum(a: Album): void
+      - buildInfoLine(a: Album): String
+      - typeLabel(albumType: String): String
+      - updateLibraryButton(): void
+      - toggleLibrary(): void
+      - addToSpotifyFavourites(): void
+      - onTrackMenuClick(track: Track, anchor: View): void
+      - addTrackToFavourites(track: Track): void
+      - chooseAndAddToPlaylist(track: Track): void
+      - showPlaylistPicker(track: Track, playlists: List<Playlist>): void
+      - addTrackToPlaylist(track: Track, playlist: Playlist, playlistName: String): void
+      - showToastError(message: String): void
+      - onPreviewClick(track: Track): void
+      - startPreview(url: String): void
+      - stopPreview(): void
+      # onStop(): void
+      # onDestroy(): void
+      - showError(message: String): void
+    }
+    class LibraryActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      # onResume(): void
+      - openAlbum(album: Album): void
+    }
+    class SettingsActivity {
+      # onCreate(savedInstanceState: Bundle): void
+      - logout(): void
+      - {static} themeToId(theme: String): int
+      - {static} idToTheme(id: int): String
+      - {static} languageToId(language: String): int
+      - {static} idToLanguage(id: int): String
+    }
+}
+class CameraController #E4E4E4
+class SpotifyAuthManager #E4E4E4
+class SettingsManager #E4E4E4
+class PreviewPlayer #E4E4E4
+class LibraryController #E4E4E4
+class AlbumController #E4E4E4
+class AlbumAdapter #E4E4E4
+class TrackAdapter #E4E4E4
+
+LoginActivity ..> MainMenuActivity : on success
+MainMenuActivity ..> CameraActivity : scan
+MainMenuActivity ..> LibraryActivity
+MainMenuActivity ..> SettingsActivity
+MainMenuActivity ..> AlbumActivity : recent
+LibraryActivity ..> AlbumActivity
+CameraActivity ..> AlbumActivity : recognised
+SettingsActivity ..> LoginActivity : log out
+LoginActivity --> SpotifyAuthManager
+SettingsActivity --> SettingsManager
+MainMenuActivity --> LibraryController
+LibraryActivity --> LibraryController
+AlbumActivity --> AlbumController
+CameraActivity --> CameraController
+AlbumActivity --> PreviewPlayer
+MainMenuActivity --> AlbumAdapter
+LibraryActivity --> AlbumAdapter
+CameraActivity --> AlbumAdapter : bottom sheet
+AlbumActivity --> TrackAdapter
+@enduml

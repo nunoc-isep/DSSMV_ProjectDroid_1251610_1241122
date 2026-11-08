@@ -1,0 +1,81 @@
+@startuml
+title AlbumSnap - Track previews (Deezer, iTunes, Spotify ISRC)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle folder
+skinparam defaultFontSize 11
+skinparam classBackgroundColor #FDFDFD
+skinparam classBorderColor #444444
+skinparam ArrowColor #444444
+skinparam nodesep 18
+skinparam ranksep 32
+hide empty members
+left to right direction
+
+
+package "external" {
+    class SpotifyTrackInfoService {
+      + getIsrc(trackSpotifyId: String): String
+    }
+    class DeezerPreviewService {
+      + findPreviewUrl(query: PreviewQuery): String
+      - searchBest(q: String, query: PreviewQuery): String
+      - getOrNull(address: String): JSONObject
+    }
+    class ItunesPreviewService {
+      + findPreviewUrl(query: PreviewQuery): String
+    }
+    class CompositePreviewService {
+      + CompositePreviewService(sources: PreviewService...)
+      + findPreviewUrl(query: PreviewQuery): String
+    }
+    class JsonHttp <<package-private>> {
+      ~ {static} get(address: String): JSONObject
+      ~ {static} text(o: JSONObject, key: String): String
+      ~ {static} secure(url: String): String
+    }
+}
+package "util" {
+    class PreviewMatcher <<utility>> {
+      + {static} DURATION_TOLERANCE_MS: long = 5000
+      + {static} score(query: PreviewQuery, title: String, artist: String,\n    album: String, durationMs: long): int
+      + {static} isMatch(query: PreviewQuery, title: String,\n    artist: String, durationMs: long): boolean
+      + {static} cleanTitle(title: String): String
+      + {static} normalize(text: String): String
+    }
+    class PreviewPlayer {
+      + play(url: String): void
+      + pause(): void
+      + stop(): void
+      + release(): void
+      + isPlaying(): boolean
+      + isPaused(): boolean
+    }
+    interface "PreviewPlayer.Listener" as PlayerListener {
+      + onPlaying(): void
+      + onPaused(): void
+      + onFinished(): void
+      + onError(): void
+    }
+}
+interface PreviewService #E4E4E4
+interface TrackInfoService #E4E4E4
+class PreviewQuery #E4E4E4
+class SpotifyApiClient #E4E4E4
+class AlbumController #E4E4E4
+class AlbumActivity #E4E4E4
+
+CompositePreviewService "1" o-- "1..*" PreviewService : sources\n(Deezer, iTunes)
+DeezerPreviewService ..> JsonHttp
+ItunesPreviewService ..> JsonHttp
+DeezerPreviewService ..> PreviewMatcher
+ItunesPreviewService ..> PreviewMatcher
+DeezerPreviewService ..> PreviewQuery
+ItunesPreviewService ..> PreviewQuery
+SpotifyTrackInfoService --> SpotifyApiClient
+PreviewPlayer +-- PlayerListener
+PreviewPlayer --> PlayerListener
+AlbumController --> PreviewService
+AlbumController --> TrackInfoService
+AlbumActivity --> PreviewPlayer
+@enduml

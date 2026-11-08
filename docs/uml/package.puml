@@ -1,0 +1,55 @@
+@startuml
+title AlbumSnap - Package diagram (dependencies taken from the imports)
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam packageStyle folder
+skinparam nodesep 35
+skinparam ranksep 60
+skinparam ArrowColor #444444
+skinparam package {
+  BackgroundColor #FDFDFD
+  BorderColor #444444
+}
+package "com.example.albumsnap" as root {
+  package "views" as views <<presentation>> #E8F0FE {
+    package "adapters" as adapters #E8F0FE
+  }
+  package "controllers" as controllers <<application logic>> #E6F4EA
+  package "services" as services <<contracts>> #FFF4D6
+  package "repository" as repository <<contracts>> #FFF4D6
+  package "external" as external <<remote implementations>> #FCE8E6
+  package "storage" as storage <<local persistence>> #FCE8E6
+  package "model" as model <<domain>> #F3E8FD
+  package "dto" as dto <<data transfer>> #F3E8FD
+  package "util" as util <<helpers>> #EEEEEE
+  package "(default package)" as rootpkg <<AlbumSnapApplication>> #EEEEEE
+}
+
+views --> controllers
+views --> model
+views --> util
+views --> adapters
+views ..> external : SpotifyAuthManager\n(login, logout)
+views ..> storage : SettingsManager
+adapters --> model
+adapters --> util
+
+controllers --> services
+controllers --> repository
+controllers --> model
+controllers --> util
+controllers ..> external : create()\n(composition root)
+controllers ..> storage : create()\n(composition root)
+
+external --> services : implements
+external --> repository : implements
+external --> dto
+external --> model
+external --> util
+storage --> repository : implements
+storage --> model
+services --> model
+repository --> model
+util --> model
+rootpkg ..> storage
+@enduml

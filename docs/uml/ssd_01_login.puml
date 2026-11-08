@@ -28,5 +28,4 @@ alt not authenticated
 else already authenticated
   System --> User: shows the main menu
 end
-
 @enduml

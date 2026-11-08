@@ -1,0 +1,20 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System: opens the main menu
+System --> User: shows the Recent box with the last scanned album\nor informs that there are none
+opt there are recent scans
+  User -> System: expands the Recent box
+  System --> User: shows the last 10 scanned albums
+  User -> System: collapses the Recent box
+  System --> User: shows only the last scanned album
+  User -> System: selects an album
+  System --> User: shows the album details
+end
+@enduml

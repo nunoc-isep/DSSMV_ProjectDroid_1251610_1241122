@@ -1,0 +1,47 @@
+@startuml
+title Sequence - Scan (1/2): capture the photo and recognise it with Cloud Vision
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 115
+skinparam ParticipantPadding 4
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+participant "Camera\nActivity" as CA
+participant "System\ncamera app" as CAM
+participant "Camera\nController" as CC
+participant "Google\nCloudVision\nService" as GV
+participant "Cloud\nVision API" as VA
+
+[-> CA : tap "Scan" (opens CameraActivity)
+CA -> CA : checkPermissionAndOpenCamera()
+CA -> CAM : TakePicture(photoUri)\n// temp file in cache/images, via FileProvider
+CAM --> CA : success
+CA -> CA : loadBitmapFromUri(), applyExifRotation(),\ndeleteTempPhoto()
+CA -> CC : processCapturedImage(photo, CameraCallback)
+CC --> CA : onStatusUpdate(status_analyzing_vision)
+CC -> GV : analyzeImage(photo, VisionCallback)
+GV -> GV : prepareForUpload(): central 80 % crop,\nmax 1280 px, JPEG 85 %, Base64
+GV -> VA : POST /v1/images:annotate\n(TEXT_DETECTION + WEB_DETECTION)
+alt HTTP error or exception
+  VA --> GV : error
+  GV --> CC : onError(exception)
+  CC --> CA : onError(error_analyze_image, detail)
+else success
+  VA --> GV : JSON (OCR text, best guesses, web entities,\nmatching pages and images)
+  GV --> CC : onSuccess(json)
+  CC -> GV : parseSearchQueries(json),\nparseSpotifyAlbumIds(json), parseCoverKeys(json)
+  GV --> CC : queries, spotifyIds, coverKeys
+  alt no queries and no Spotify ids
+    CC --> CA : onError(error_no_text)
+  else clues found
+    CC --> CA : onStatusUpdate(status_searching_spotify)
+    note over CC : continues in the next diagram
+  end
+end
+@enduml

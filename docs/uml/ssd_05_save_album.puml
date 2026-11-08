@@ -1,0 +1,21 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System: asks to save the album to the Library
+alt saved
+  System --> User: informs success and shows the Remove from Library button
+else storage error
+  System --> User: informs the error
+end
+
+note right of System
+  The Library is stored on the device only.
+  It does not change the Spotify account.
+end note
+@enduml

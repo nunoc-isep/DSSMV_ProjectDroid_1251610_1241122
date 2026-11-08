@@ -1,0 +1,47 @@
+@startuml
+title Sequence - Scan (2/2): search on Spotify, rank and choose
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 115
+skinparam ParticipantPadding 4
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+participant "Camera\nActivity" as CA
+participant "Camera\nController" as CC
+participant "SpotifyAlbum\nSearchService" as SS
+participant "Spotify\nWeb API" as SA
+participant "Album\nMatcher" as AM
+
+CC -> CC : new Thread: searchAndRank(queries, ids, keys)
+loop each Spotify album id that appeared next to the cover
+  CC -> SS : getAlbumDetails(id)
+  SS -> SA : GET /albums/{id} (+ /tracks pages)
+  SA --> SS : album
+  SS --> CC : Album
+end
+loop each query: at most 5 searches,\nstops after 3 if there are results
+  CC -> SS : searchAlbums(query)
+  SS -> SA : GET /search?type=album&limit=10&q=...
+  SA --> SS : albums
+  SS --> CC : List<Album>
+end
+CC -> CC : albums whose cover key (i.scdn.co) equals the photo's\ngo first; exactCoverMatch if there is exactly one
+CC -> AM : rank(candidates, queries)
+AM --> CC : candidates ordered by score
+alt nothing found
+  CC --> CA : onError(error_album_not_found)
+else exact cover match or AlbumMatcher.isConfident()
+  CC --> CA : onAlbumsRecognized([best album])
+else several candidates
+  CC --> CA : onAlbumsRecognized(at most 10 albums)
+end
+CA -> CA : runOnUiThread: showAlbumBottomSheet(albums)
+[-> CA : user chooses an album
+CA -> CA : openAlbumDetails(album): startActivity(AlbumActivity,\nEXTRA_SPOTIFY_ID, EXTRA_FROM_SCAN=true), finish()
+@enduml

@@ -1,0 +1,41 @@
+@startuml
+title Sequence - Open an album
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 115
+skinparam ParticipantPadding 4
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+participant "Album\nActivity" as AA
+participant "Album\nController" as AC
+participant "Background" as BG
+participant "SpotifyAlbum\nRepository" as RR
+participant "SqliteAlbum\nRepository" as LR
+
+[-> AA : onCreate (EXTRA_SPOTIFY_ID)
+AA -> AC : getAlbum(spotifyId, Callback<Album>)
+AC -> BG : run(Task, Callback)
+BG -> RR : findBySpotifyId(id)\n// worker thread
+RR --> BG : Album (GET /albums/{id} and the remaining\n/tracks pages of 50)
+alt success
+  BG --> AA : onResult(album)\n// main thread
+  AA -> AA : displayAlbum(album)
+  opt EXTRA_FROM_SCAN = true
+    AA -> AC : registerScan(album)
+    AC -> LR : addRecentScan(album)\n// feeds the Recent box
+  end
+  AA -> AC : isInLibrary(id, Callback<Boolean>)
+  AC -> LR : isInLibrary(id)
+  LR --> AA : true / false (via Background)
+  AA -> AA : updateLibraryButton()
+else exception (network, expired session, 404...)
+  BG --> AA : onError(message)
+  AA -> AA : showError(message)
+end
+@enduml

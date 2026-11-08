@@ -1,0 +1,58 @@
+@startuml
+title AlbumSnap - Deployment diagram (physical architecture; all remote links use HTTPS)
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam nodesep 22
+skinparam ranksep 28
+skinparam ArrowColor #444444
+skinparam node {
+  BackgroundColor #FDFDFD
+  BorderColor #444444
+}
+skinparam cloud {
+  BackgroundColor #F1F5FB
+  BorderColor #44556F
+}
+left to right direction
+
+node "Android device <<device>>\nAndroid 7.0+ (API 24+), rear camera" as dev {
+  node "Default web browser\n<<ACTION VIEW>>" as br
+  node "System camera app\n<<ACTION IMAGE_CAPTURE>>" as cam
+  node "AlbumSnap process\n<<ART>>" as app {
+    artifact "albumsnap.apk" as apk
+  }
+  database "albumsnap.db\n<<SQLite>>" as db
+  artifact "SharedPreferences\n(spotify_auth, settings)" as prefs
+  folder "cache/images/\n(FileProvider)" as cache
+}
+
+cloud "Spotify" as spotify {
+  node "accounts.spotify.com\nlogin + tokens" as acc
+  node "api.spotify.com/v1\nWeb API" as api
+  node "i.scdn.co\ncover-art CDN" as cdn
+}
+cloud "Google Cloud" as gcp {
+  node "vision.googleapis.com\nCloud Vision v1" as vis
+}
+cloud "Deezer" as dz {
+  node "api.deezer.com\npreviews" as dzapi
+}
+cloud "Apple" as ap {
+  node "itunes.apple.com\npreviews" as itapi
+}
+
+apk -- db
+apk -- prefs
+apk -- cache
+apk -up- cam : intent
+apk -up- br : intent
+br ..> apk : callback
+
+apk --> acc : tokens
+apk --> api : REST + Bearer
+apk --> cdn : covers
+apk --> vis : JSON + API key
+apk --> dzapi : GET
+apk --> itapi : GET
+br --> acc : login
+@enduml

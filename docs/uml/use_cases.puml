@@ -1,45 +1,47 @@
-@startuml AlbumSnapUseCases
-
+@startuml
 title AlbumSnap - Use Case Diagram
-
 skinparam shadowing false
 skinparam packageStyle rectangle
+skinparam defaultFontSize 11
 skinparam usecase {
   BackgroundColor #FDFDFD
   BorderColor #444444
 }
 skinparam ArrowColor #444444
 left to right direction
+skinparam linetype polyline
+skinparam nodesep 25
+skinparam ranksep 70
 
 actor "User" as U
 actor "Spotify" as SP <<external system>>
 actor "Google Cloud Vision" as GV <<external system>>
 actor "Deezer" as DZ <<external system>>
+actor "iTunes" as IT <<external system>>
 
 rectangle "AlbumSnap" {
-
   usecase "UC1\nLog in with Spotify" as UC1
-
-  usecase "UC3\nScan album cover" as UC3
-  usecase "Capture cover photo" as UC3a
-  usecase "Recognize album\nfrom photo" as UC3b
-  usecase "Search albums\non Spotify" as UC3c
-  usecase "Choose album from\ncandidate list" as UC3d
-
-  usecase "UC4\nView album details" as UC4
-  usecase "UC5\nPreview track (30 s)" as UC5
-  usecase "UC6\nSave album to Library" as UC6
-  usecase "UC7\nRemove album from Library" as UC7
-  usecase "UC8\nAdd album to\nSpotify favourites" as UC8
-
-  usecase "UC9\nBrowse Library" as UC9
-  usecase "UC10\nView recent scans" as UC10
-
-  usecase "UC11\nChange theme" as UC11
-  usecase "UC12\nChange language" as UC12
+  usecase "UC2\nScan album cover" as UC2
+  usecase "Capture cover photo" as UC2a
+  usecase "Recognize album\nfrom photo" as UC2b
+  usecase "Search albums\non Spotify" as UC2c
+  usecase "Choose album from\ncandidate list" as UC2d
+  usecase "UC3\nView album details" as UC3
+  usecase "UC4\nPreview track (30 s)" as UC4
+  usecase "UC5\nSave album to Library" as UC5
+  usecase "UC6\nRemove album from Library" as UC6
+  usecase "UC7\nAdd album to\nSpotify favourites" as UC7
+  usecase "UC8\nAdd track to\nSpotify favourites" as UC8
+  usecase "UC9\nAdd track to a playlist" as UC9
+  usecase "UC10\nBrowse Library" as UC10
+  usecase "UC11\nView recent scans" as UC11
+  usecase "UC12\nChange theme" as UC12
+  usecase "UC13\nChange language" as UC13
+  usecase "UC14\nLog out" as UC14
 }
 
 U --> UC1
+U --> UC2
 U --> UC3
 U --> UC4
 U --> UC5
@@ -50,30 +52,38 @@ U --> UC9
 U --> UC10
 U --> UC11
 U --> UC12
+U --> UC13
+U --> UC14
 
-UC3 ..> UC3a : <<include>>
-UC3 ..> UC3b : <<include>>
-UC3 ..> UC3c : <<include>>
-UC3d .> UC3 : <<extend>>\n[more than one candidate]
-UC3 ..> UC4 : <<include>>
+UC2 ..> UC2a : <<include>>
+UC2 ..> UC2b : <<include>>
+UC2 ..> UC2c : <<include>>
+UC2d .> UC2 : <<extend>>\n[no clear winner]
+UC2 ..> UC3 : <<include>>
 
-UC9 ..> UC4 : <<extend>>\n[user taps album]
-UC10 ..> UC4 : <<extend>>\n[user taps album]
-UC5 .> UC4 : <<extend>>
-UC6 .> UC4 : <<extend>>
-UC7 .> UC4 : <<extend>>
-UC8 .> UC4 : <<extend>>
+UC10 ..> UC3 : <<extend>>\n[user taps album]
+UC11 ..> UC3 : <<extend>>\n[user taps album]
+UC4 .> UC3 : <<extend>>
+UC5 .> UC3 : <<extend>>
+UC6 .> UC3 : <<extend>>
+UC7 .> UC3 : <<extend>>
+UC8 .> UC3 : <<extend>>
+UC9 .> UC3 : <<extend>>
 
 UC1 --> SP
-UC3b --> GV
-UC3c --> SP
+UC2b --> GV
+UC2c --> SP
+UC3 --> SP
 UC4 --> SP
-UC5 --> DZ
+UC4 --> DZ
+UC4 --> IT
+UC7 --> SP
 UC8 --> SP
+UC9 --> SP
 
-note as N1
-  All use cases except UC1 require an authenticated
-  Spotify session (otherwise the app shows UC1).
-end note
-
+legend bottom
+  All use cases except UC1 require an authenticated Spotify session
+  (otherwise the app shows UC1). UC4 asks Spotify only for the track ISRC;
+  the audio comes from Deezer or, failing that, iTunes.
+endlegend
 @enduml

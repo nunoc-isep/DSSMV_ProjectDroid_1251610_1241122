@@ -1,0 +1,50 @@
+@startuml
+title Sequence - Play a 30 s preview of a track
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 115
+skinparam ParticipantPadding 4
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+participant "Album\nActivity" as AA
+participant "Album\nController" as AC
+participant "SpotifyTrack\nInfoService" as TI
+participant "Composite\nPreviewService" as CP
+participant "Deezer\nPreviewService" as DZ
+participant "Itunes\nPreviewService" as IT
+participant "Preview\nPlayer" as PP
+
+[-> AA : tap play on a track
+AA -> AA : onPreviewClick(track): stopPreview(),\nsetPreviewState(LOADING)
+alt URL already in previewUrls
+  AA -> PP : play(url)
+else not cached
+  AA -> AC : getPreviewUrl(album, track, Callback<String>)
+  AC -> TI : getIsrc(trackId)\n// GET /tracks/{id}
+  TI --> AC : isrc (on IOException the search goes on without it)
+  AC -> CP : findPreviewUrl(PreviewQuery)
+  CP -> DZ : findPreviewUrl(query)
+  DZ -> DZ : /track/isrc:{isrc}; else search with fields;\nelse free search (PreviewMatcher.score)
+  alt Deezer has the same recording
+    DZ --> CP : preview URL
+  else null or IOException
+    CP -> IT : findPreviewUrl(query)
+    IT --> CP : preview URL or null
+  end
+  CP --> AC : URL, or null if no source has it
+  AC --> AA : onResult(url)\n// stored in previewUrls
+  alt URL not empty and the track is still the selected one
+    AA -> PP : play(url)
+    PP --> AA : onPlaying()\n// the button becomes pause
+    PP --> AA : onFinished()\n// stopPreview()
+  else URL empty
+    AA -> AA : stopPreview(), Toast preview_unavailable
+  end
+end
+@enduml

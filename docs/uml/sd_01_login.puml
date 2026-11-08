@@ -1,0 +1,52 @@
+@startuml
+title Sequence - Login with Spotify (Authorization Code + PKCE)
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 105
+skinparam ParticipantPadding 4
+skinparam ParticipantPadding 8
+skinparam BoxPadding 6
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #444444
+}
+autonumber
+actor User
+participant "Login\nActivity" as LA
+participant "Spotify\nAuthManager" as AM
+database "SharedPreferences\n(spotify_auth)" as SP
+participant "Web\nbrowser" as BR
+participant "accounts.\nspotify.com" as AC
+
+User -> LA : taps "Connect Spotify"
+LA -> AM : authorize()
+AM -> AM : verifier = randomString(64)\nchallenge = challengeFor(verifier) // SHA-256 + Base64URL\nstate = randomString(16)
+AM -> SP : save code_verifier, state
+AM -> BR : startActivity(ACTION_VIEW, authorize URL:\nclient_id, response_type=code, redirect_uri, scope,\nstate, code_challenge_method=S256, code_challenge)
+BR -> AC : GET /authorize
+AC --> BR : login and consent page
+User -> BR : logs in and accepts
+BR -> AC : submits credentials
+AC --> BR : redirect albumsnap://callback?code=...&state=...
+BR -> LA : onNewIntent(intent) // launchMode singleTask
+LA -> AM : handleRedirect(uri, LoginCallback)
+AM -> SP : read code_verifier, state
+alt error parameter, state mismatch or missing verifier
+  AM --> LA : onError(LOGIN_CANCELLED / LOGIN_INVALID)
+  LA -> User : Toast with the (localized) message
+else valid redirect
+  AM -> SP : remove code_verifier, state
+  AM -> AC : POST /api/token (grant_type=authorization_code, code,\nredirect_uri, client_id, code_verifier) // background thread
+  alt token obtained
+    AC --> AM : access_token, refresh_token, expires_in
+    AM -> SP : save access_token, refresh_token, expires_at
+    AM --> LA : onSuccess() // posted to the main thread
+    LA -> LA : startActivity(MainMenuActivity), finish()
+  else HTTP error
+    AM --> LA : onError(LOGIN_TOKEN_FAILED)
+  end
+end
+@enduml

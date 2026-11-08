@@ -1,0 +1,22 @@
+@startuml
+autoactivate on
+autonumber
+
+actor "User" as User
+participant ":System" as System
+participant "Spotify" as Spotify
+
+activate User
+
+User -> System: opens the menu of a track
+System --> User: shows "Add to Spotify favourites" and "Add to a playlist"
+User -> System: chooses "Add to Spotify favourites"
+System -> Spotify: adds the track to the user's Liked Songs
+alt accepted
+  Spotify --> System: confirms
+  System --> User: informs success
+else rejected (e.g. missing permission)
+  Spotify --> System: returns an error
+  System --> User: informs the error
+end
+@enduml
