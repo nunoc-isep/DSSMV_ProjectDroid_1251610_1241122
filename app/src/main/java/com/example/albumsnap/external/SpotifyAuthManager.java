@@ -211,12 +211,38 @@ public class SpotifyAuthManager implements SpotifyAuthService {
         form.put("client_id", CLIENT_ID);
         try {
             saveTokens(postForm(tokenUrl, form));
+        } catch (TokenHttpException e) {
+            Log.w("SpotifyAuthManager", "Renovacao recusada: " + e.getMessage());
+            if (TokenErrors.isRevokedGrant(e.status, e.body)) {
+                // O refresh token morreu (acesso revogado ou expirado): continuar "ligado" so
+                // deixaria o utilizador preso com erros. Apaga-se a sessao e pede-se um login novo.
+                clearTokens();
+                throw new IOException(ErrorMessages.SESSION_EXPIRED);
+            }
+            throw new IOException(ErrorMessages.spotifyHttp(e.status));   // sem o corpo tecnico do servidor
         } catch (IOException e) {
-            throw e;
+            throw e;   // sem rede, tempo esgotado...: a sessao pode estar boa, mantem-se
         } catch (Exception e) {
             throw new IOException(e.getMessage(), e);
         }
         return prefs.getString(KEY_ACCESS, null);
+    }
+
+    /** Esquece os tokens (mas nao um login que esteja a meio). */
+    private void clearTokens() {
+        prefs.edit().remove(KEY_ACCESS).remove(KEY_REFRESH).remove(KEY_EXPIRES_AT).apply();
+    }
+
+    /** O servidor de tokens respondeu com um erro HTTP. */
+    private static final class TokenHttpException extends IOException {
+        final int status;
+        final String body;
+
+        TokenHttpException(int status, String body) {
+            super("HTTP " + status + " " + body);
+            this.status = status;
+            this.body = body;
+        }
     }
 
     // ------------------------------------------------------------------ helpers
@@ -259,7 +285,7 @@ public class SpotifyAuthManager implements SpotifyAuthService {
             InputStream stream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
             String response = readAll(stream);
             if (status >= 400) {
-                throw new IOException("HTTP " + status + " " + response);
+                throw new TokenHttpException(status, response);
             }
             return new JSONObject(response);
         } finally {

@@ -241,8 +241,7 @@ public class AlbumActivity extends AppCompatActivity {
                 public void onError(String message) {
                     if (isFinishing() || isDestroyed()) return;
                     updateLibraryButton();
-                    Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
-                            Toast.LENGTH_LONG).show();
+                    reportError(message);
                 }
             });
         } else {
@@ -259,8 +258,7 @@ public class AlbumActivity extends AppCompatActivity {
                 public void onError(String message) {
                     if (isFinishing() || isDestroyed()) return;
                     updateLibraryButton();
-                    Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
-                            Toast.LENGTH_LONG).show();
+                    reportError(message);
                 }
             });
         }
@@ -280,8 +278,7 @@ public class AlbumActivity extends AppCompatActivity {
             public void onError(String message) {
                 if (isFinishing() || isDestroyed()) return;
                 btnFavourite.setEnabled(true);
-                Toast.makeText(AlbumActivity.this, ErrorMessages.localize(AlbumActivity.this, message),
-                            Toast.LENGTH_LONG).show();
+                reportError(message);
             }
         });
     }
@@ -392,8 +389,15 @@ public class AlbumActivity extends AppCompatActivity {
         });
     }
 
+    /** Erro de uma chamada ao Spotify: se a sessao acabou volta ao login; senao mostra a mensagem. */
+    private void reportError(String message) {
+        if (SessionExpiry.handle(this, message)) return;
+        Toast.makeText(this, ErrorMessages.localize(this, message), Toast.LENGTH_LONG).show();
+    }
+
     /** Erro numa chamada as playlists/favoritos. 403 aqui costuma ser falta de permissao (scope). */
     private void showToastError(String message) {
+        if (SessionExpiry.handle(this, message)) return;
         String text = ErrorMessages.SPOTIFY_FORBIDDEN.equals(message)
                 ? getString(R.string.error_playlist_permission)
                 : ErrorMessages.localize(this, message);
@@ -485,6 +489,7 @@ public class AlbumActivity extends AppCompatActivity {
     }
 
     private void showError(String message) {
+        if (SessionExpiry.handle(this, message)) return;
         txtError.setText(ErrorMessages.localize(this, message));
         txtError.setVisibility(View.VISIBLE);
     }

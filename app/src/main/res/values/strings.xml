@@ -30,7 +30,7 @@
     <string name="error_no_text">Could not read text or recognize the album cover.</string>
     <string name="error_analyze_image">Error analyzing image: %1$s</string>
     <string name="error_unexpected_response">Unexpected response from Spotify.</string>
-    <string name="error_session_expired">Your Spotify session expired. Log out in Settings and log in again.</string>
+    <string name="error_session_expired">Your Spotify session expired. Please log in again.</string>
     <string name="error_spotify_forbidden">Spotify refused the request. Check that this account was added to the app in the Spotify Dashboard and that the permissions were granted.</string>
     <string name="error_spotify_not_found">Not found on Spotify.</string>
     <string name="error_spotify_rate_limit">Too many requests to Spotify. Try again in a moment.</string>

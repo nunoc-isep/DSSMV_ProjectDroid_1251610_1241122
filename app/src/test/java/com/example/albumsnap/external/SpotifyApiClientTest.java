@@ -22,12 +22,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SpotifyApiClientTest {
 
     private FakeHttpServer server;
+    private FakeSpotifyAuth auth;
     private SpotifyApiClient client;
 
     @Before
     public void setUp() throws IOException {
         server = new FakeHttpServer();
-        client = new SpotifyApiClient(new FakeSpotifyAuth(), server.baseUrl());
+        auth = new FakeSpotifyAuth();
+        client = new SpotifyApiClient(auth, server.baseUrl());
     }
 
     @After
@@ -152,5 +154,88 @@ public class SpotifyApiClientTest {
 
         assertEquals(403, e.getStatus());
         assertEquals(1, server.requests().size());
+    }
+
+    // ------------------------------------------------- sessao revogada (401)
+
+    @Test
+    public void a401_refreshesTheTokenOnceAndRetriesTheRequest() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        server.on("GET", "/me", request -> calls.getAndIncrement() == 0
+                ? new Reply(401, "{\"error\":{\"message\":\"The access token expired\"}}")
+                : new Reply(200, "{\"id\":\"user1\"}"));
+
+        JSONObject json = client.get("/me");
+
+        assertEquals("user1", json.getString("id"));
+        assertEquals(1, auth.refreshCalls);
+        assertEquals(2, server.requests().size());
+        assertEquals("Bearer " + FakeSpotifyAuth.TOKEN, server.requests().get(0).header("Authorization"));
+        assertEquals("Bearer " + FakeSpotifyAuth.REFRESHED_TOKEN, server.requests().get(1).header("Authorization"));
+    }
+
+    @Test
+    public void a401_retryKeepsTheMethodAndTheBody() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        server.on("POST", "/playlists/p1/items", request -> calls.getAndIncrement() == 0
+                ? new Reply(401, "{}") : new Reply(201, "{}"));
+        JSONObject body = new JSONObject().put("uris", new org.json.JSONArray().put("spotify:track:t1"));
+
+        client.post("/playlists/p1/items", body);
+
+        assertEquals(2, server.requests().size());
+        assertEquals("POST", server.requests().get(1).method);
+        assertEquals(server.requests().get(0).body, server.requests().get(1).body);
+    }
+
+    @Test
+    public void ifTheRetryIsStillRefused_itGivesUpAfterASingleRefresh() {
+        server.reply("GET", "/me", 401, "{}");
+
+        SpotifyApiClient.ApiException e = assertThrows(SpotifyApiClient.ApiException.class, () -> client.get("/me"));
+
+        assertEquals(401, e.getStatus());
+        assertEquals(ErrorMessages.SESSION_EXPIRED, e.getMessage());
+        assertEquals(1, auth.refreshCalls);
+        assertEquals(2, server.requests().size());   // nunca em ciclo
+    }
+
+    @Test
+    public void ifTheRefreshTokenWasRevoked_theSessionErrorIsPassedOnAndNothingIsRetried() {
+        server.reply("GET", "/me", 401, "{}");
+        auth.refreshFailure = new IOException(ErrorMessages.SESSION_EXPIRED);
+
+        IOException e = assertThrows(IOException.class, () -> client.get("/me"));
+
+        assertEquals(ErrorMessages.SESSION_EXPIRED, e.getMessage());
+        assertEquals(1, server.requests().size());
+    }
+
+    @Test
+    public void ifTheRefreshFailsForAnotherReason_thatErrorIsPassedOn() {
+        server.reply("GET", "/me", 401, "{}");
+        auth.refreshFailure = new IOException("sem rede");
+
+        IOException e = assertThrows(IOException.class, () -> client.get("/me"));
+
+        assertEquals("sem rede", e.getMessage());
+    }
+
+    @Test
+    public void otherErrors_neverTriggerATokenRefresh() {
+        for (int status : new int[]{400, 403, 404, 429, 500}) {
+            statusOf(status);
+        }
+
+        assertEquals(0, auth.refreshCalls);
+    }
+
+    @Test
+    public void aSuccessfulRequest_neverRefreshes() throws Exception {
+        server.reply("GET", "/me", 200, "{}");
+
+        client.get("/me");
+
+        assertEquals(0, auth.refreshCalls);
     }
 }

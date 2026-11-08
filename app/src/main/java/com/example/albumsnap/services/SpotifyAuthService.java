@@ -14,6 +14,14 @@ public interface SpotifyAuthService {
      */
     String getAccessToken() throws IOException;
 
+    /**
+     * Pede um access token novo com o refresh token, mesmo que o atual ainda parecesse valido
+     * (usado quando o Spotify responde 401). Se o Spotify recusar o refresh token, a sessao e
+     * apagada e lanca IOException(ErrorMessages.SESSION_EXPIRED).
+     * BLOQUEANTE: so pode ser chamado numa thread de fundo.
+     */
+    String refreshAccessToken() throws IOException;
+
     boolean isAuthenticated();
 
     void disconnect();

@@ -304,12 +304,116 @@ public class SpotifyAuthManagerInstrumentedTest {
         assertEquals(ErrorMessages.NO_SESSION, e.getMessage());
     }
 
-    @Test
-    public void refresh_whenTheServerRejects_isAnIoException() {
-        storeTokens("OLD", "REVOKED", 0);
-        tokenServerReplies(400, "{\"error\":\"invalid_grant\"}");
+    // ---------------------------------------------------- sessao revogada
 
+    private static final String REVOKED =
+            "{\"error\":\"invalid_grant\",\"error_description\":\"Refresh token revoked\"}";
+
+    private void assertSessionStillStored() {
+        assertTrue(auth.isAuthenticated());
+        assertEquals("R", prefs.getString("refresh_token", null));
+        assertEquals("OLD", prefs.getString("access_token", null));
+    }
+
+    @Test
+    public void refresh_aRevokedRefreshToken_endsTheSessionInsteadOfLeavingTheUserStuck() {
+        storeTokens("OLD", "R", 0);
+        tokenServerReplies(400, REVOKED);
+
+        IOException e = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        assertEquals(ErrorMessages.SESSION_EXPIRED, e.getMessage());
+        assertFalse(auth.isAuthenticated());   // o ecra de login volta a aparecer
+        assertNull(prefs.getString("access_token", null));
+        assertNull(prefs.getString("refresh_token", null));
+        assertEquals(0, prefs.getLong("expires_at", 0));
+    }
+
+    @Test
+    public void refresh_aRevokedSession_doesNotLeakTheServerBodyToTheMessage() {
+        storeTokens("OLD", "R", 0);
+        tokenServerReplies(400, REVOKED);
+
+        IOException e = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        assertFalse(e.getMessage(), e.getMessage().contains("revoked"));
+        assertFalse(e.getMessage(), e.getMessage().contains("HTTP"));
+    }
+
+    @Test
+    public void afterARevocation_theNextCallSaysThereIsNoSession() {
+        storeTokens("OLD", "R", 0);
+        tokenServerReplies(400, REVOKED);
         assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        IOException second = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        assertEquals(ErrorMessages.NO_SESSION, second.getMessage());
+        assertEquals(1, server.requests().size());   // nao insiste num token que ja se sabe morto
+    }
+
+    @Test
+    public void afterARevocation_aNewLoginWorksNormally() throws Exception {
+        storeTokens("OLD", "R", 0);
+        tokenServerReplies(400, REVOKED);
+        assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        pendingLogin("VERIFIER", "STATE");
+        tokenServerReplies(200, "{\"access_token\":\"FRESH\",\"refresh_token\":\"R2\",\"expires_in\":3600}");
+        Login login = new Login();
+        auth.handleRedirect(Uri.parse("albumsnap://callback?code=C&state=STATE"), login);
+        login.await();
+
+        assertTrue(login.success);
+        assertEquals("FRESH", auth.getAccessToken());
+    }
+
+    @Test
+    public void refresh_otherRejectionsOfTheTokenServer_keepTheSession() {
+        for (String body : new String[]{"{\"error\":\"invalid_client\"}", "{\"error\":\"invalid_request\"}", "nao e json"}) {
+            storeTokens("OLD", "R", 0);
+            tokenServerReplies(400, body);
+
+            IOException e = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+            assertEquals(ErrorMessages.spotifyHttp(400), e.getMessage());
+            assertSessionStillStored();
+        }
+    }
+
+    @Test
+    public void refresh_serverErrorsAndRateLimits_keepTheSession() {
+        for (int status : new int[]{401, 429, 500, 503}) {
+            storeTokens("OLD", "R", 0);
+            tokenServerReplies(status, REVOKED);   // mesmo com o corpo "invalid_grant": so o 400 acaba a sessao
+
+            IOException e = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+            assertEquals(ErrorMessages.spotifyHttp(status), e.getMessage());
+            assertSessionStillStored();
+        }
+    }
+
+    @Test
+    public void refresh_networkFailure_keepsTheSession() {
+        storeTokens("OLD", "R", 0);
+        server.close();   // ninguem a escutar: ligacao recusada
+
+        IOException e = assertThrows(IOException.class, () -> auth.getAccessToken());
+
+        assertFalse(ErrorMessages.SESSION_EXPIRED.equals(e.getMessage()));
+        assertSessionStillStored();
+    }
+
+    @Test
+    public void refreshAccessToken_forcesANewTokenEvenIfTheCurrentOneLooksValid() throws Exception {
+        storeTokens("STILL_VALID", "R", System.currentTimeMillis() + 3_600_000);
+        tokenServerReplies(200, "{\"access_token\":\"FORCED\",\"expires_in\":3600}");
+
+        assertEquals("FORCED", auth.refreshAccessToken());
+
+        assertEquals(1, server.requests().size());
+        assertEquals("FORCED", auth.getAccessToken());
     }
 
     @Test

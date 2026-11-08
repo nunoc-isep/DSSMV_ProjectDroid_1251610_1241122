@@ -284,6 +284,7 @@ public class CameraActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (!isActivityAlive()) return;
                     layoutLoading.setVisibility(View.GONE);
+                    if (SessionExpiry.handle(CameraActivity.this, detail)) return;   // sessao acabou: volta ao login
                     String message = getString(messageRes, ErrorMessages.localize(CameraActivity.this, detail));
                     Toast.makeText(CameraActivity.this, message, Toast.LENGTH_LONG).show();
                     finish();

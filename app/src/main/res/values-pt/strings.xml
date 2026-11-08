@@ -31,7 +31,7 @@
     <string name="error_no_text">Não foi possível ler o texto nem reconhecer a capa do álbum.</string>
     <string name="error_analyze_image">Erro ao analisar a imagem: %1$s</string>
     <string name="error_unexpected_response">Resposta inesperada do Spotify.</string>
-    <string name="error_session_expired">A tua sessão do Spotify expirou. Termina a sessão nas Definições e entra outra vez.</string>
+    <string name="error_session_expired">A tua sessão do Spotify expirou. Entra outra vez.</string>
     <string name="error_spotify_forbidden">O Spotify recusou o pedido. Verifica se esta conta foi adicionada à app no Spotify Dashboard e se as permissões foram concedidas.</string>
     <string name="error_spotify_not_found">Não encontrado no Spotify.</string>
     <string name="error_spotify_rate_limit">Demasiados pedidos ao Spotify. Tenta outra vez daqui a pouco.</string>

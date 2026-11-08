@@ -95,8 +95,19 @@ public class SpotifyApiClient {
     }
 
     private String request(String method, String pathAndQuery, byte[] body) throws IOException {
-        String token = auth.getAccessToken();
+        try {
+            return execute(method, pathAndQuery, body, auth.getAccessToken());
+        } catch (ApiException e) {
+            if (e.getStatus() != 401) throw e;
+            // O Spotify recusou o token (por exemplo, o utilizador revogou o acesso). Tenta renovar
+            // uma vez e repetir o pedido; se o refresh token tambem estiver morto, o AuthService
+            // apaga a sessao e lanca SESSION_EXPIRED.
+            Log.w("SpotifyApiClient", method + " " + pathAndQuery + " -> 401: a renovar o token");
+            return execute(method, pathAndQuery, body, auth.refreshAccessToken());
+        }
+    }
 
+    private String execute(String method, String pathAndQuery, byte[] body, String token) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(baseUrl + pathAndQuery).openConnection();
         try {
             conn.setRequestMethod(method);
